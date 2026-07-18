@@ -72,7 +72,16 @@ class ElectDW {
 
     this.settingsBtn = $('#settingsBtn');
     this.githubBtn = $('#githubBtn');
+    this.historyBtn = $('#historyBtn');
     this.footerGithub = $('#footerGithub');
+
+    this.historyModal = $('#historyModal');
+    this.historyModalClose = $('#historyModalClose');
+    this.historyModalCloseBtn = $('#historyModalCloseBtn');
+    this.historyModalClear = $('#historyModalClear');
+    this.historyModalList = $('#historyModalList');
+    this.historyModalEmpty = $('#historyModalEmpty');
+    this.historyCount = $('#historyCount');
 
     this.settingsModal = $('#settingsModal');
     this.settingsClose = $('#settingsClose');
@@ -109,6 +118,14 @@ class ElectDW {
     this.folderPath.addEventListener('click', () => this.pickFolder());
     this.clearHistoryBtn.addEventListener('click', () => this.clearHistory());
 
+    this.historyBtn.addEventListener('click', () => this.openHistoryModal());
+    this.historyModalClose.addEventListener('click', () => this.closeHistoryModal());
+    this.historyModalCloseBtn.addEventListener('click', () => this.closeHistoryModal());
+    this.historyModal.addEventListener('click', (e) => {
+      if (e.target === this.historyModal) this.closeHistoryModal();
+    });
+    this.historyModalClear.addEventListener('click', () => this.clearHistoryFromModal());
+
     this.settingsBtn.addEventListener('click', () => this.openSettings());
     this.settingsClose.addEventListener('click', () => this.closeSettings());
     this.settingsCancel.addEventListener('click', () => this.closeSettings());
@@ -118,8 +135,9 @@ class ElectDW {
     });
     this.settingsFolderBtn.addEventListener('click', () => this.pickSettingsFolder());
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !this.settingsModal.classList.contains('hidden')) {
-        this.closeSettings();
+      if (e.key === 'Escape') {
+        if (!this.historyModal.classList.contains('hidden')) this.closeHistoryModal();
+        else if (!this.settingsModal.classList.contains('hidden')) this.closeSettings();
       }
     });
 
@@ -507,6 +525,79 @@ class ElectDW {
     await window.electronAPI.clearHistory();
     this.state.history = [];
     this.renderHistory();
+    this.renderHistoryModalList();
+  }
+
+  async openHistoryModal() {
+    await this.loadHistory();
+    this.renderHistoryModalList();
+    this.historyModal.classList.remove('hidden');
+  }
+
+  closeHistoryModal() {
+    this.historyModal.classList.add('hidden');
+  }
+
+  async clearHistoryFromModal() {
+    await window.electronAPI.clearHistory();
+    this.state.history = [];
+    this.renderHistory();
+    this.renderHistoryModalList();
+    this.showNotification('History cleared', 'success');
+  }
+
+  renderHistoryModalList() {
+    const list = this.historyModalList;
+    const empty = this.historyModalEmpty;
+    const count = this.historyCount;
+    const items = this.state.history || [];
+
+    list.innerHTML = '';
+    count.textContent = `${items.length} download${items.length !== 1 ? 's' : ''}`;
+
+    if (items.length === 0) {
+      empty.classList.remove('hidden');
+      return;
+    }
+
+    empty.classList.add('hidden');
+
+    items.forEach((item) => {
+      const div = document.createElement('div');
+      div.className = 'history-modal-item';
+
+      const statusEmoji = item.status === 'completed' ? '✅' : item.status === 'failed' ? '❌' : '⏹';
+      const platformEmoji = this.getPlatformEmoji(item.platform);
+      const date = new Date(item.timestamp);
+      const dateStr = date.toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+
+      div.innerHTML = `
+        <div class="history-modal-icon">${platformEmoji}</div>
+        <div class="history-modal-info">
+          <div class="history-modal-title">${this.escapeHtml(item.title || 'Unknown')}</div>
+          <div class="history-modal-meta">
+            <span class="history-modal-platform" style="color:var(--text-muted)">${this.capitalize(item.platform)}</span>
+            <span>•</span>
+            <span>${item.resolution || '—'}</span>
+            <span>•</span>
+            <span>${item.status}</span>
+          </div>
+        </div>
+        <div class="history-modal-date">${dateStr}</div>
+        <div class="history-modal-status">${statusEmoji}</div>
+      `;
+
+      div.addEventListener('click', () => {
+        if (item.filePath) {
+          window.electronAPI.openFolder(item.filePath);
+        }
+      });
+
+      list.appendChild(div);
+    });
   }
 
   showError(msg) {

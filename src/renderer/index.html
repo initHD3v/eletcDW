@@ -10,6 +10,7 @@
 <body>
   <div id="app">
     <div class="titlebar">
+      <button class="titlebar-btn" id="historyBtn" title="Download History">⏬</button>
       <button class="titlebar-btn" id="settingsBtn" title="Settings">⚙️</button>
       <button class="titlebar-btn" id="githubBtn" title="GitHub">🌐</button>
     </div>
@@ -229,6 +230,26 @@
       <div class="modal-footer">
         <button class="modal-btn modal-btn-secondary" id="settingsCancel">Cancel</button>
         <button class="modal-btn modal-btn-primary" id="settingsSave">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="historyModal">
+    <div class="modal modal-history">
+      <div class="modal-header">
+        <span class="modal-title">⏬ Download History</span>
+        <div class="modal-header-actions">
+          <button class="modal-header-btn" id="historyModalClear" title="Clear All">🗑️</button>
+          <button class="modal-close" id="historyModalClose">✕</button>
+        </div>
+      </div>
+      <div class="modal-body" id="historyModalBody">
+        <div class="history-empty" id="historyModalEmpty">No downloads yet. Paste a link to start!</div>
+        <div class="history-modal-list" id="historyModalList"></div>
+      </div>
+      <div class="modal-footer">
+        <span class="history-count" id="historyCount">0 downloads</span>
+        <button class="modal-btn modal-btn-secondary" id="historyModalCloseBtn">Close</button>
       </div>
     </div>
   </div>
