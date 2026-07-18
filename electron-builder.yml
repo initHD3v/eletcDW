@@ -1,0 +1,24 @@
+appId: com.eletcdw.app
+productName: ElectDW
+directories:
+  output: release
+  buildResources: build
+
+mac:
+  target:
+    - target: dmg
+      arch: arm64
+  category: public.app-category.utilities
+  darkModeSupport: true
+  hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
+  extraResources:
+    - from: src/resources/yt-dlp
+      to: yt-dlp
+      filter:
+        - "**/*"
+
+dmg:
+  title: "ElectDW ${version}"
+  artifactName: "ElectDW-${version}-arm64.${ext}"
+  icon: build/icon.icns

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:;">
+  <title>ElectDW</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <div class="titlebar">
+      <button class="titlebar-btn" id="settingsBtn" title="Settings">⚙️</button>
+      <button class="titlebar-btn" id="githubBtn" title="GitHub">🌐</button>
+    </div>
+
+    <header class="header">
+      <div class="logo">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-name">Elect</span><span class="logo-dw">DW</span>
+      </div>
+      <div class="tagline">Video Downloader — 13 Platforms Supported</div>
+    </header>
+
+    <div class="main-content">
+      <div class="paste-section" id="pasteSection">
+        <div class="paste-input-wrapper" id="pasteWrapper">
+          <span class="paste-icon" id="pasteIcon">🔗</span>
+          <input type="text" id="pasteInput" placeholder="Paste video link here..." spellcheck="false" autofocus>
+          <div class="paste-actions">
+            <button class="paste-btn clear-btn hidden" id="clearBtn" title="Clear">✕</button>
+            <button class="paste-btn" id="pasteBtn" title="Paste from Clipboard">📋</button>
+          </div>
+        </div>
+        <div class="paste-hint">
+          <button class="paste-hint-btn" id="clipboardHint">⬇ Paste from Clipboard</button>
+        </div>
+        <div class="error-message hidden" id="errorMsg"></div>
+      </div>
+
+      <div class="video-section hidden" id="videoSection">
+        <div class="video-card">
+          <div class="thumbnail-wrapper">
+            <img id="videoThumbnail" alt="Video thumbnail">
+          </div>
+          <div class="video-details">
+            <div id="videoTitle"></div>
+            <div class="video-meta">
+              <span class="platform-badge" id="platformBadge"></span>
+              <span class="video-duration" id="videoDuration"></span>
+              <span class="video-uploader" id="videoUploader"></span>
+            </div>
+            <div class="video-details-footer">
+              <div class="resolution-group">
+                <div class="resolution-label">Quality</div>
+                <div class="resolution-pills" id="resolutionPills"></div>
+                <div class="resolution-info" id="resolutionInfo"></div>
+              </div>
+              <div class="download-btn-wrapper">
+                <button class="download-btn" id="downloadBtn">⬇ Download</button>
+              </div>
+            </div>
+            <div class="folder-row">
+              <span>📁</span>
+              <span class="folder-path" id="folderPath">~/Downloads/ElectDW</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="progress-section hidden" id="progressSection">
+        <div class="progress-card">
+          <div class="progress-header">
+            <span class="progress-status" id="progressStatus">Downloading...</span>
+            <span class="progress-percent" id="progressPercent">0%</span>
+          </div>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="progressFill"></div>
+          </div>
+          <div class="progress-details">
+            <span id="progressSpeed">0 MB/s</span>
+            <span id="progressETA">ETA: --:--</span>
+          </div>
+          <div class="progress-actions">
+            <button class="progress-action-btn cancel" id="cancelBtn">✕ Cancel</button>
+            <button class="progress-action-btn open-folder hidden" id="openFolderBtn">📂 Open Folder</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="history-section" id="historySection">
+        <div class="history-header">
+          <span class="history-title">⏬ Recent Downloads</span>
+          <button class="history-clear-btn hidden" id="clearHistoryBtn">Clear all</button>
+        </div>
+        <div class="history-list" id="historyList">
+          <div class="history-empty">No downloads yet. Paste a link to start!</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>ElectDW v1.0.0</span>
+      <span class="footer-separator">•</span>
+      <span>yt-dlp</span>
+      <span class="footer-separator">•</span>
+      <a href="#" id="footerGithub">GitHub</a>
+    </div>
+  </div>
+
+  <div class="notification hidden" id="notification"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
