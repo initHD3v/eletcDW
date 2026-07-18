@@ -5,8 +5,13 @@ const store = require('./store');
 const { detectPlatform, getFormatList, DownloadManager } = require('./downloader');
 
 const downloadManager = new DownloadManager();
+let currentWindow = null;
 
-function setupIpcHandlers(mainWindow) {
+function setWindow(win) {
+  currentWindow = win;
+}
+
+function setupIpcHandlers() {
   ipcMain.handle('detect-link', async (event, url) => {
     const platform = detectPlatform(url);
     return { platform, valid: platform !== null };
@@ -111,8 +116,8 @@ function setupIpcHandlers(mainWindow) {
       formatSelector,
       savePath,
       (progress) => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('download-progress', progress);
+        if (currentWindow && !currentWindow.isDestroyed()) {
+          currentWindow.webContents.send('download-progress', progress);
         }
       },
       (result) => {
@@ -129,13 +134,13 @@ function setupIpcHandlers(mainWindow) {
         if (history.length > 100) history.length = 100;
         store.set('history', history);
 
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('download-complete', { filePath: savePath });
+        if (currentWindow && !currentWindow.isDestroyed()) {
+          currentWindow.webContents.send('download-complete', { filePath: savePath });
         }
       },
       (error) => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('download-error', { error: error.message });
+        if (currentWindow && !currentWindow.isDestroyed()) {
+          currentWindow.webContents.send('download-error', { error: error.message });
         }
       }
     );
@@ -197,7 +202,7 @@ function setupIpcHandlers(mainWindow) {
 
   ipcMain.handle('save-settings', async (event, settings) => {
     store.set('settings', settings);
-    if (settings.theme && mainWindow) {
+    if (settings.theme && currentWindow) {
       nativeTheme.themeSource = settings.theme;
     }
     return true;
@@ -221,4 +226,4 @@ function setupIpcHandlers(mainWindow) {
   });
 }
 
-module.exports = { setupIpcHandlers };
+module.exports = { setupIpcHandlers, setWindow };

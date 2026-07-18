@@ -1,6 +1,6 @@
 const { app, BrowserWindow, nativeTheme } = require('electron');
 const path = require('path');
-const { setupIpcHandlers } = require('./ipc-handlers');
+const { setupIpcHandlers, setWindow } = require('./ipc-handlers');
 const store = require('./store');
 
 const isDev = process.env.NODE_ENV === 'development';
@@ -34,14 +34,15 @@ function createWindow() {
     mainWindow.show();
   });
 
+  setWindow(mainWindow);
+
   if (isDev) {
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   }
-
-  setupIpcHandlers(mainWindow);
 }
 
 app.whenReady().then(() => {
+  setupIpcHandlers();
   createWindow();
 
   app.on('activate', () => {
