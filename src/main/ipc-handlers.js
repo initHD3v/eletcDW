@@ -18,32 +18,69 @@ function setupIpcHandlers(mainWindow) {
 
       let formats = [];
       if (data && data.formats) {
+        const seenHeights = new Set();
+
         formats = data.formats
-          .filter(f => f.vcodec !== 'none' || f.acodec !== 'none')
-          .filter(f => f.height || f.format_note)
-          .map(f => ({
-            formatId: f.format_id,
-            resolution: f.height ? `${f.height}p` : (f.format_note || 'unknown'),
-            ext: f.ext || 'mp4',
-            filesize: f.filesize || f.filesize_approx || 0,
-            vcodec: f.vcodec || 'unknown',
-            acodec: f.acodec || 'unknown',
-            hasVideo: f.vcodec !== 'none',
-            hasAudio: f.acodec !== 'none'
-          }))
-          .sort((a, b) => {
-            const aRes = parseInt(a.resolution) || 0;
-            const bRes = parseInt(b.resolution) || 0;
-            return bRes - aRes;
-          });
+          .filter(f => {
+            if (!f || !f.format_id) return false;
+            if (f.vcodec === 'none' && f.acodec === 'none') return false;
+            if (f.vcodec === 'none') return false;
+            const height = parseInt(f.height) || 0;
+            if (height === 0 && !f.format_note) return false;
+            return true;
+          })
+          .map(f => {
+            const height = parseInt(f.height) || 0;
+            let resLabel;
+            if (height > 0) {
+              resLabel = `${height}p`;
+            } else if (f.format_note) {
+              const noteMatch = f.format_note.match(/(\d+)p/);
+              resLabel = noteMatch ? `${noteMatch[1]}p` : f.format_note;
+            } else {
+              resLabel = 'unknown';
+            }
+            return {
+              formatId: f.format_id,
+              resolution: resLabel,
+              height,
+              ext: f.ext || 'mp4',
+              filesize: f.filesize || f.filesize_approx || 0,
+              vcodec: f.vcodec || 'unknown',
+              acodec: f.acodec || 'unknown',
+              hasVideo: f.vcodec !== 'none',
+              hasAudio: f.acodec !== 'none',
+              tbr: f.tbr || 0
+            };
+          })
+          .sort((a, b) => b.height - a.height || a.tbr - b.tbr);
+
+        const uniqueResolutions = new Map();
+        for (const f of formats) {
+          const key = f.resolution;
+          if (!uniqueResolutions.has(key)) {
+            uniqueResolutions.set(key, f);
+          }
+        }
+
+        formats = Array.from(uniqueResolutions.values());
       }
 
-      const uniqueResolutions = new Map();
-      for (const f of formats) {
-        const key = f.resolution;
-        if (!uniqueResolutions.has(key) || f.filesize > uniqueResolutions.get(key).filesize) {
-          uniqueResolutions.set(key, f);
-        }
+      if (formats.length === 0) {
+        const height = data.height || 0;
+        const resLabel = height > 0 ? `${height}p` : 'unknown';
+        formats = [{
+          formatId: 'best',
+          resolution: resLabel,
+          height,
+          ext: data.ext || 'mp4',
+          filesize: data.filesize || data.filesize_approx || 0,
+          vcodec: data.vcodec || 'unknown',
+          acodec: data.acodec || 'unknown',
+          hasVideo: true,
+          hasAudio: true,
+          tbr: data.tbr || 0
+        }];
       }
 
       return {
@@ -51,14 +88,14 @@ function setupIpcHandlers(mainWindow) {
         thumbnail: data.thumbnail || '',
         duration: data.duration || 0,
         uploader: data.uploader || '',
-        formats: Array.from(uniqueResolutions.values())
+        formats
       };
     } catch (error) {
       throw new Error(`Failed to fetch formats: ${error.message}`);
     }
   });
 
-  ipcMain.handle('start-download', async (event, { url, formatId, outputPath }) => {
+  ipcMain.handle('start-download', async (event, { url, resolution, outputPath }) => {
     const defaultPath = store.get('settings.downloadPath') || path.join(app.getPath('downloads'), 'ElectDW');
 
     const savePath = outputPath || defaultPath;
@@ -67,10 +104,12 @@ function setupIpcHandlers(mainWindow) {
       fs.mkdirSync(savePath, { recursive: true });
     }
 
+    const formatSelector = resolution || 'best';
+
     return new Promise((resolve, reject) => {
       const downloadId = downloadManager.startDownload(
         url,
-        formatId,
+        formatSelector,
         savePath,
         (progress) => {
           if (mainWindow && !mainWindow.isDestroyed()) {
@@ -78,6 +117,23 @@ function setupIpcHandlers(mainWindow) {
           }
         },
         (result) => {
+          const historyEntry = {
+            url,
+            title: '',
+            platform: detectPlatform(url),
+            resolution,
+            filePath: savePath,
+            status: 'completed'
+          };
+          const history = store.get('history');
+          history.unshift({
+            id: Date.now().toString(36),
+            timestamp: new Date().toISOString(),
+            ...historyEntry
+          });
+          if (history.length > 100) history.length = 100;
+          store.set('history', history);
+
           resolve({ success: true, ...result });
         },
         (error) => {

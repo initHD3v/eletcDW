@@ -198,23 +198,19 @@ class ElectDW {
 
   renderResolutions(formats) {
     this.resolutionPills.innerHTML = '';
-    const resolutionMap = new Map();
 
-    for (const f of formats) {
-      const key = f.resolution;
-      if (!resolutionMap.has(key) || f.filesize > resolutionMap.get(key).filesize) {
-        resolutionMap.set(key, f);
-      }
-    }
-
-    const uniqueFormats = Array.from(resolutionMap.values());
-    const sorted = uniqueFormats.sort((a, b) => {
+    const sorted = [...formats].sort((a, b) => {
       const aRes = parseInt(a.resolution) || 0;
       const bRes = parseInt(b.resolution) || 0;
       return bRes - aRes;
     });
 
-    const displayFormats = sorted.slice(0, 6);
+    if (sorted.length === 0) {
+      this.resolutionPills.innerHTML = '<div class="resolution-info">No formats available</div>';
+      return;
+    }
+
+    const displayFormats = sorted.slice(0, 8);
 
     displayFormats.forEach((f, i) => {
       const pill = document.createElement('button');
@@ -224,8 +220,8 @@ class ElectDW {
         this.selectFormat(f);
       }
       const sizeLabel = f.filesize ? this.formatSize(f.filesize) : '';
-      pill.textContent = `${f.resolution}${f.ext ? ' ' + f.ext.toUpperCase() : ''}${sizeLabel ? ' • ' + sizeLabel : ''}`;
-      pill.dataset.formatId = f.formatId;
+      const label = `${f.resolution}${sizeLabel ? ' • ' + sizeLabel : ''}`;
+      pill.textContent = label;
       pill.dataset.resolution = f.resolution;
       pill.addEventListener('click', () => {
         $$('.resolution-pill').forEach(p => p.classList.remove('selected'));
@@ -235,7 +231,7 @@ class ElectDW {
       this.resolutionPills.appendChild(pill);
     });
 
-    if (sorted.length > 6) {
+    if (sorted.length > 8) {
       const more = document.createElement('button');
       more.className = 'resolution-pill';
       more.textContent = '▼ More';
@@ -247,8 +243,9 @@ class ElectDW {
   selectFormat(format) {
     this.state.selectedFormat = format;
     const sizeLabel = format.filesize ? this.formatSize(format.filesize) : 'Unknown size';
-    this.resolutionInfo.textContent = `${format.resolution} • ${(format.ext || 'mp4').toUpperCase()} • ${sizeLabel}`;
-    this.downloadBtn.textContent = `⬇ Download (${sizeLabel})`;
+    const resLabel = format.resolution;
+    this.resolutionInfo.textContent = `${resLabel} • ${(format.ext || 'mp4').toUpperCase()} • ${sizeLabel}`;
+    this.downloadBtn.textContent = `⬇ Download ${resLabel} (${sizeLabel})`;
   }
 
   showAllResolutions(formats) {
@@ -258,8 +255,8 @@ class ElectDW {
       const pill = document.createElement('button');
       pill.className = 'resolution-pill';
       const sizeLabel = f.filesize ? this.formatSize(f.filesize) : '';
-      pill.textContent = `${f.resolution} ${(f.ext || '').toUpperCase()} ${sizeLabel}`;
-      pill.dataset.formatId = f.formatId;
+      pill.textContent = `${f.resolution} ${sizeLabel}`;
+      pill.dataset.resolution = f.resolution;
       pill.addEventListener('click', () => {
         $$('.resolution-pill').forEach(p => p.classList.remove('selected'));
         pill.classList.add('selected');
@@ -284,10 +281,12 @@ class ElectDW {
     this.cancelBtn.classList.remove('hidden');
     this.openFolderBtn.classList.add('hidden');
 
+    const resolution = this.state.selectedFormat.resolution;
+
     try {
       const result = await window.electronAPI.startDownload({
         url: this.state.currentUrl,
-        formatId: this.state.selectedFormat.formatId || 'best',
+        resolution,
         outputPath: this.state.downloadPath === '~/Downloads/ElectDW'
           ? null
           : this.state.downloadPath

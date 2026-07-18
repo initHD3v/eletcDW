@@ -4,4 +4,4 @@ release/
 out/
 *.log
 .DS_Store
-src/resources/yt-dlp*
+src/resources/yt-dlp

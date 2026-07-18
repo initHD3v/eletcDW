@@ -1,10 +1,8 @@
 const { spawn, execFile } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
 
 const isDev = process.env.NODE_ENV === 'development';
-const appPath = isDev ? __dirname : process.resourcesPath;
 
 function getYtDlpPath() {
   if (isDev) {
@@ -48,48 +46,26 @@ function detectPlatform(url) {
   }
 }
 
-function parseFormatId(formatString) {
-  if (!formatString || formatString === 'best') {
-    return 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best';
-  }
-  if (formatString.includes('p')) {
-    const height = formatString.replace('p', '');
-    return `bestvideo[height<=${height}][ext=mp4]+bestaudio[ext=m4a]/best[height<=${height}][ext=mp4]/best`;
-  }
-  return formatString;
-}
-
-function getFormats(url) {
-  return new Promise((resolve, reject) => {
-    const ytDlpPath = getYtDlpPath();
-    const args = [
-      '--dump-json',
-      '--no-download',
-      '--print', '%(title)s|||%(duration)s|||%(thumbnail)s|||%(height)s|||%(ext)s|||%(filesize_approx)s|||%(format_note)s|||%(format_id)s',
-      url
-    ];
-
-    execFile(ytDlpPath, args, { timeout: 30000 }, (error, stdout, stderr) => {
-      if (error) {
-        return reject(new Error(stderr || error.message));
-      }
-      resolve(stdout);
-    });
-  });
-}
-
 function getFormatList(url) {
   return new Promise((resolve, reject) => {
     const ytDlpPath = getYtDlpPath();
     const args = [
       '--dump-json',
       '--no-download',
+      '--no-warnings',
       url
     ];
 
-    execFile(ytDlpPath, args, { timeout: 30000, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
+    execFile(ytDlpPath, args, { timeout: 60000, maxBuffer: 1024 * 1024 * 4 }, (error, stdout, stderr) => {
       if (error) {
-        return reject(new Error(stderr || error.message));
+        let errMsg = stderr || error.message;
+        if (errMsg.includes('Video unavailable')) {
+          return reject(new Error('Video unavailable or private'));
+        }
+        if (errMsg.includes('HTTP Error')) {
+          return reject(new Error('Network error. Check your connection.'));
+        }
+        return reject(new Error(errMsg.split('\n').filter(l => l.includes('ERROR'))[0] || errMsg));
       }
       try {
         const data = JSON.parse(stdout);
@@ -99,6 +75,20 @@ function getFormatList(url) {
       }
     });
   });
+}
+
+function parseFormatId(formatString) {
+  if (!formatString || formatString === 'best') {
+    return 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best';
+  }
+
+  const heightMatch = formatString.match(/^(\d+)p?$/);
+  if (heightMatch) {
+    const height = heightMatch[1];
+    return `bestvideo[height<=${height}][ext=mp4]+bestaudio[ext=m4a]/best[height<=${height}][ext=mp4]/best`;
+  }
+
+  return formatString;
 }
 
 class DownloadManager {
@@ -147,6 +137,8 @@ class DownloadManager {
             let percent = 0;
             if (total > 0 && downloaded > 0) {
               percent = Math.min(100, Math.round((downloaded / total) * 100));
+            } else if (downloaded > 0 && total <= 0) {
+              percent = 0;
             }
 
             onProgress({
@@ -165,7 +157,7 @@ class DownloadManager {
     proc.stderr.on('data', (data) => {
       const msg = data.toString();
       if (msg.includes('ERROR:')) {
-        onError(new Error(msg.replace('ERROR:', '').trim()));
+        onError(new Error(msg.replace(/^.*ERROR:\s*/, '').trim()));
       }
     });
 
@@ -190,6 +182,9 @@ class DownloadManager {
     const proc = this.activeDownloads.get(downloadId);
     if (proc) {
       proc.kill('SIGTERM');
+      setTimeout(() => {
+        try { proc.kill('SIGKILL'); } catch {}
+      }, 3000);
       this.activeDownloads.delete(downloadId);
       return true;
     }
@@ -200,7 +195,6 @@ class DownloadManager {
 module.exports = {
   detectPlatform,
   parseFormatId,
-  getFormats,
   getFormatList,
   DownloadManager
 };
