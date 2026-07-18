@@ -12,10 +12,10 @@ function createWindow() {
   nativeTheme.themeSource = theme;
 
   mainWindow = new BrowserWindow({
-    width: 800,
-    height: 620,
-    minWidth: 720,
-    minHeight: 520,
+    width: 790,
+    height: 820,
+    resizable: false,
+    center: true,
     title: 'ElectDW',
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#0B0E14',
