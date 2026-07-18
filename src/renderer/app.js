@@ -94,7 +94,9 @@ class ElectDW {
       }
     });
 
-    const unsubProgress = window.electronAPI.onDownloadProgress((data) => this.onProgress(data));
+    window.electronAPI.onDownloadProgress((data) => this.onProgress(data));
+    window.electronAPI.onDownloadComplete((data) => this.onDownloadComplete(data));
+    window.electronAPI.onDownloadError((data) => this.onDownloadError(data));
   }
 
   async onInputChange() {
@@ -283,21 +285,17 @@ class ElectDW {
 
     const resolution = this.state.selectedFormat.resolution;
 
-    try {
-      const result = await window.electronAPI.startDownload({
-        url: this.state.currentUrl,
-        resolution,
-        outputPath: this.state.downloadPath === '~/Downloads/ElectDW'
-          ? null
-          : this.state.downloadPath
-      });
+    const result = await window.electronAPI.startDownload({
+      url: this.state.currentUrl,
+      resolution,
+      outputPath: this.state.downloadPath === '~/Downloads/ElectDW'
+        ? null
+        : this.state.downloadPath
+    });
 
-      if (result.downloadId) {
-        this.state.downloadId = result.downloadId;
-        this.cancelBtn.dataset.downloadId = result.downloadId;
-      }
-    } catch (err) {
-      this.onDownloadError(err);
+    if (result && result.downloadId) {
+      this.state.downloadId = result.downloadId;
+      this.cancelBtn.dataset.downloadId = result.downloadId;
     }
   }
 
@@ -306,21 +304,19 @@ class ElectDW {
     this.progressPercent.textContent = `${data.percent}%`;
     this.progressFill.style.width = `${data.percent}%`;
 
-    if (data.speed) {
+    if (data.speed && data.speed > 0) {
       this.progressSpeed.textContent = `${this.formatSize(data.speed)}/s`;
     }
-    if (data.eta) {
+    if (data.eta && data.eta > 0) {
       const mins = Math.floor(data.eta / 60);
       const secs = Math.floor(data.eta % 60);
       this.progressETA.textContent = `ETA: ${mins}:${secs.toString().padStart(2, '0')}`;
-    }
-
-    if (data.percent >= 100) {
-      this.onDownloadComplete();
+    } else if (data.eta === 0) {
+      this.progressETA.textContent = 'Finalizing...';
     }
   }
 
-  onDownloadComplete() {
+  onDownloadComplete(data) {
     this.progressFill.classList.add('complete');
     this.progressFill.style.width = '100%';
     this.progressPercent.textContent = '100%';
@@ -335,21 +331,14 @@ class ElectDW {
     this.downloadBtn.classList.add('completed');
     this.downloadBtn.disabled = false;
 
-    const entry = {
-      url: this.state.currentUrl,
-      title: this.state.videoData?.title || 'Unknown',
-      platform: this.state.platform,
-      resolution: this.state.selectedFormat?.resolution || 'Unknown',
-      filePath: this.state.downloadPath,
-      status: 'completed'
-    };
-
-    window.electronAPI.addHistory(entry).then(() => this.loadHistory());
     this.showNotification('Download completed!', 'success');
     this.state.downloadId = null;
+    this.loadHistory();
   }
 
-  onDownloadError(err) {
+  onDownloadError(data) {
+    const errMsg = typeof data === 'string' ? data : (data.error || 'Unknown error');
+
     this.progressStatus.textContent = '❌ Download Failed';
     this.progressFill.classList.add('complete');
     this.progressFill.style.width = '0%';
@@ -358,18 +347,9 @@ class ElectDW {
     this.downloadBtn.disabled = false;
     this.cancelBtn.classList.add('hidden');
 
-    const entry = {
-      url: this.state.currentUrl,
-      title: this.state.videoData?.title || 'Unknown',
-      platform: this.state.platform,
-      resolution: this.state.selectedFormat?.resolution || 'Unknown',
-      filePath: '',
-      status: 'failed'
-    };
-
-    window.electronAPI.addHistory(entry).then(() => this.loadHistory());
-    this.showNotification(`Download failed: ${err.message}`, 'error');
+    this.showNotification(`Download failed: ${errMsg}`, 'error');
     this.state.downloadId = null;
+    this.loadHistory();
   }
 
   async cancelDownload() {

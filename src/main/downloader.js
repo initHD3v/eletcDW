@@ -104,10 +104,13 @@ class DownloadManager {
 
     const args = [
       '--newline',
+      '--no-warnings',
       '--progress-template',
       'download:[%(progress.downloaded_bytes)s/%(progress.total_bytes)s/%(progress.speed)s/%(progress.eta)s]',
       '-f', parseFormatId(formatId),
+      '--merge-output-format', 'mp4',
       '-o', outputTemplate,
+      '--no-playlist',
       url
     ];
 
@@ -119,6 +122,7 @@ class DownloadManager {
     this.activeDownloads.set(downloadId, proc);
 
     let buffer = '';
+    let hasError = false;
 
     proc.stdout.on('data', (data) => {
       buffer += data.toString();
@@ -126,37 +130,32 @@ class DownloadManager {
       buffer = lines.pop() || '';
 
       for (const line of lines) {
-        if (line.startsWith('download:')) {
-          const match = line.match(/\[([^\]]+)\]/g);
-          if (match && match.length >= 4) {
-            const downloaded = parseFloat(match[0].slice(1, -1));
-            const total = parseFloat(match[1].slice(1, -1));
-            const speed = parseFloat(match[2].slice(1, -1));
-            const eta = parseFloat(match[3].slice(1, -1));
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('[')) continue;
+        const match = trimmed.match(/^\[([^\]]+)\]/);
+        if (!match) continue;
+        const parts = match[1].split('/');
+        if (parts.length < 4) continue;
 
-            let percent = 0;
-            if (total > 0 && downloaded > 0) {
-              percent = Math.min(100, Math.round((downloaded / total) * 100));
-            } else if (downloaded > 0 && total <= 0) {
-              percent = 0;
-            }
+        const downloaded = parseFloat(parts[0]);
+        const total = parseFloat(parts[1]);
+        const speed = parseFloat(parts[2]);
+        const eta = parseFloat(parts[3]);
 
-            onProgress({
-              percent,
-              downloaded,
-              total,
-              speed,
-              eta,
-              status: 'downloading'
-            });
-          }
+        let percent = 0;
+        if (total > 0 && downloaded > 0) {
+          percent = Math.min(100, Math.round((downloaded / total) * 100));
         }
+
+        onProgress({ percent, downloaded, total, speed, eta, status: 'downloading' });
       }
     });
 
     proc.stderr.on('data', (data) => {
+      if (hasError) return;
       const msg = data.toString();
       if (msg.includes('ERROR:')) {
+        hasError = true;
         onError(new Error(msg.replace(/^.*ERROR:\s*/, '').trim()));
       }
     });

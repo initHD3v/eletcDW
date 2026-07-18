@@ -106,42 +106,41 @@ function setupIpcHandlers(mainWindow) {
 
     const formatSelector = resolution || 'best';
 
-    return new Promise((resolve, reject) => {
-      const downloadId = downloadManager.startDownload(
-        url,
-        formatSelector,
-        savePath,
-        (progress) => {
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('download-progress', progress);
-          }
-        },
-        (result) => {
-          const historyEntry = {
-            url,
-            title: '',
-            platform: detectPlatform(url),
-            resolution,
-            filePath: savePath,
-            status: 'completed'
-          };
-          const history = store.get('history');
-          history.unshift({
-            id: Date.now().toString(36),
-            timestamp: new Date().toISOString(),
-            ...historyEntry
-          });
-          if (history.length > 100) history.length = 100;
-          store.set('history', history);
-
-          resolve({ success: true, ...result });
-        },
-        (error) => {
-          reject(error);
+    const downloadId = downloadManager.startDownload(
+      url,
+      formatSelector,
+      savePath,
+      (progress) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('download-progress', progress);
         }
-      );
-      resolve({ downloadId });
-    });
+      },
+      (result) => {
+        const history = store.get('history');
+        history.unshift({
+          id: Date.now().toString(36),
+          timestamp: new Date().toISOString(),
+          url,
+          platform: detectPlatform(url),
+          resolution,
+          filePath: savePath,
+          status: 'completed'
+        });
+        if (history.length > 100) history.length = 100;
+        store.set('history', history);
+
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('download-complete', { filePath: savePath });
+        }
+      },
+      (error) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('download-error', { error: error.message });
+        }
+      }
+    );
+
+    return { downloadId };
   });
 
   ipcMain.handle('cancel-download', async (event, downloadId) => {
