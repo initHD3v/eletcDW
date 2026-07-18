@@ -195,5 +195,6 @@ module.exports = {
   detectPlatform,
   parseFormatId,
   getFormatList,
+  getYtDlpPath,
   DownloadManager
 };

@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
+  getYtdlpVersion: () => ipcRenderer.invoke('get-ytdlp-version'),
 
   onDownloadProgress: (callback) => {
     const handler = (event, data) => callback(data);

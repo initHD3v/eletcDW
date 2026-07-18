@@ -4,23 +4,14 @@ const schema = {
   settings: {
     type: 'object',
     properties: {
-      downloadPath: {
-        type: 'string',
-        default: ''
-      },
-      autoOpenFolder: {
-        type: 'boolean',
-        default: true
-      },
-      defaultResolution: {
-        type: 'string',
-        default: 'best'
-      },
-      theme: {
-        type: 'string',
-        enum: ['dark', 'light'],
-        default: 'dark'
-      }
+      downloadPath: { type: 'string', default: '' },
+      autoOpenFolder: { type: 'boolean', default: true },
+      defaultResolution: { type: 'string', default: 'best' },
+      theme: { type: 'string', enum: ['dark', 'light'], default: 'dark' },
+      concurrentDownloads: { type: 'number', default: 1 },
+      notifyOnComplete: { type: 'boolean', default: true },
+      proxyUrl: { type: 'string', default: '' },
+      filenameTemplate: { type: 'string', default: '%(title)s.%(ext)s' }
     },
     default: {}
   },

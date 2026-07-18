@@ -10,7 +10,17 @@ class ElectDW {
       selectedFormat: null,
       downloadPath: '~/Downloads/ElectDW',
       downloadId: null,
-      history: []
+      history: [],
+      settings: {
+        downloadPath: '',
+        autoOpenFolder: true,
+        defaultResolution: 'best',
+        theme: 'dark',
+        concurrentDownloads: 1,
+        notifyOnComplete: true,
+        proxyUrl: '',
+        filenameTemplate: '%(title)s.%(ext)s'
+      }
     };
 
     this.cache = {};
@@ -63,6 +73,22 @@ class ElectDW {
     this.settingsBtn = $('#settingsBtn');
     this.githubBtn = $('#githubBtn');
     this.footerGithub = $('#footerGithub');
+
+    this.settingsModal = $('#settingsModal');
+    this.settingsClose = $('#settingsClose');
+    this.settingsCancel = $('#settingsCancel');
+    this.settingsSave = $('#settingsSave');
+    this.settingsFolderPath = $('#settingsFolderPath');
+    this.settingsFolderBtn = $('#settingsFolderBtn');
+    this.settingsAutoOpen = $('#settingsAutoOpen');
+    this.settingsDefaultRes = $('#settingsDefaultRes');
+    this.settingsNotify = $('#settingsNotify');
+    this.settingsTheme = $('#settingsTheme');
+    this.settingsProxy = $('#settingsProxy');
+    this.aboutVersion = $('#aboutVersion');
+    this.aboutYtdlp = $('#aboutYtdlp');
+    this.aboutGithub = $('#aboutGithub');
+    this.aboutReport = $('#aboutReport');
   }
 
   bindEvents() {
@@ -83,7 +109,30 @@ class ElectDW {
     this.folderPath.addEventListener('click', () => this.pickFolder());
     this.clearHistoryBtn.addEventListener('click', () => this.clearHistory());
 
-    this.settingsBtn.addEventListener('click', () => this.showSettings());
+    this.settingsBtn.addEventListener('click', () => this.openSettings());
+    this.settingsClose.addEventListener('click', () => this.closeSettings());
+    this.settingsCancel.addEventListener('click', () => this.closeSettings());
+    this.settingsSave.addEventListener('click', () => this.saveSettings());
+    this.settingsModal.addEventListener('click', (e) => {
+      if (e.target === this.settingsModal) this.closeSettings();
+    });
+    this.settingsFolderBtn.addEventListener('click', () => this.pickSettingsFolder());
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !this.settingsModal.classList.contains('hidden')) {
+        this.closeSettings();
+      }
+    });
+
+    this.settingsTheme.addEventListener('click', (e) => {
+      const btn = e.target.closest('.theme-option');
+      if (!btn) return;
+      $$('.theme-option').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+
+    this.aboutGithub.addEventListener('click', (e) => { e.preventDefault(); this.openGithub(); });
+    this.aboutReport.addEventListener('click', (e) => { e.preventDefault(); this.openGithub(); });
+
     this.githubBtn.addEventListener('click', () => this.openGithub());
     this.footerGithub.addEventListener('click', (e) => { e.preventDefault(); this.openGithub(); });
 
@@ -394,9 +443,12 @@ class ElectDW {
   async loadSettings() {
     try {
       const settings = await window.electronAPI.getSettings();
-      if (settings.downloadPath) {
-        this.state.downloadPath = settings.downloadPath;
-        this.folderPath.textContent = settings.downloadPath;
+      if (settings && Object.keys(settings).length > 0) {
+        this.state.settings = { ...this.state.settings, ...settings };
+        if (settings.downloadPath) {
+          this.state.downloadPath = settings.downloadPath;
+          this.folderPath.textContent = settings.downloadPath;
+        }
       }
     } catch (err) {
       console.error('Failed to load settings:', err);
@@ -473,8 +525,71 @@ class ElectDW {
     setTimeout(() => this.notification.classList.add('hidden'), 4000);
   }
 
-  showSettings() {
-    this.showNotification('Settings: Download path can be changed by clicking the folder path.', 'info');
+  async openSettings() {
+    const s = this.state.settings;
+    this.settingsFolderPath.textContent = s.downloadPath || '~/Downloads/ElectDW';
+    this.settingsAutoOpen.checked = s.autoOpenFolder;
+    this.settingsDefaultRes.value = s.defaultResolution;
+    this.settingsNotify.checked = s.notifyOnComplete;
+    this.settingsProxy.value = s.proxyUrl || '';
+
+    $$('.theme-option').forEach(b => {
+      b.classList.toggle('active', b.dataset.theme === s.theme);
+    });
+
+    document.querySelectorAll('.theme-option');
+    this.settingsTheme.querySelector(`[data-theme="${s.theme}"]`)?.classList.add('active');
+
+    this.settingsModal.classList.remove('hidden');
+
+    try {
+      const ytver = await window.electronAPI.getYtdlpVersion();
+      this.aboutYtdlp.textContent = ytver;
+    } catch {
+      this.aboutYtdlp.textContent = '—';
+    }
+
+    setTimeout(() => {
+      this.settingsClose.focus();
+    }, 100);
+  }
+
+  closeSettings() {
+    this.settingsModal.classList.add('hidden');
+  }
+
+  async saveSettings() {
+    const themeBtn = this.settingsTheme.querySelector('.theme-option.active');
+    const newSettings = {
+      downloadPath: this.state.settings.downloadPath,
+      autoOpenFolder: this.settingsAutoOpen.checked,
+      defaultResolution: this.settingsDefaultRes.value,
+      theme: themeBtn ? themeBtn.dataset.theme : 'dark',
+      notifyOnComplete: this.settingsNotify.checked,
+      proxyUrl: this.settingsProxy.value.trim(),
+      concurrentDownloads: 1,
+      filenameTemplate: '%(title)s.%(ext)s'
+    };
+
+    this.state.settings = newSettings;
+    this.state.downloadPath = newSettings.downloadPath || '~/Downloads/ElectDW';
+    this.folderPath.textContent = this.state.downloadPath;
+
+    try {
+      await window.electronAPI.saveSettings(newSettings);
+      this.closeSettings();
+      this.showNotification('Settings saved', 'success');
+    } catch (err) {
+      this.showNotification('Failed to save settings', 'error');
+    }
+  }
+
+  async pickSettingsFolder() {
+    const result = await window.electronAPI.selectFolder();
+    if (result && result.folderPath) {
+      this.state.settings.downloadPath = result.folderPath;
+      this.settingsFolderPath.textContent = result.folderPath;
+    }
   }
 
   openGithub() {

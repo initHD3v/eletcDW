@@ -1,4 +1,4 @@
-const { ipcMain, dialog, shell, app } = require('electron');
+const { ipcMain, dialog, shell, app, nativeTheme } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const store = require('./store');
@@ -197,11 +197,27 @@ function setupIpcHandlers(mainWindow) {
 
   ipcMain.handle('save-settings', async (event, settings) => {
     store.set('settings', settings);
+    if (settings.theme && mainWindow) {
+      nativeTheme.themeSource = settings.theme;
+    }
     return true;
   });
 
   ipcMain.handle('open-external', async (event, url) => {
     await shell.openExternal(url);
+  });
+
+  ipcMain.handle('get-ytdlp-version', async () => {
+    try {
+      const ytDlpPath = require('./downloader').getYtDlpPath
+        ? require('./downloader').getYtDlpPath()
+        : 'yt-dlp';
+      const { execFileSync } = require('child_process');
+      const version = execFileSync(ytDlpPath, ['--version'], { timeout: 5000 }).toString().trim();
+      return version;
+    } catch {
+      return 'unknown';
+    }
   });
 }
 
