@@ -8,11 +8,33 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <symbol id="icon-history" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="8"/><polyline points="10,5 10,10 13,13"/></symbol>
+      <symbol id="icon-settings" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="2.5"/><path d="M10 1.5v2M10 16.5v2M3.3 3.3l1.4 1.4M15.3 15.3l1.4 1.4M1.5 10h2M16.5 10h2M3.3 16.7l1.4-1.4M15.3 4.7l1.4-1.4"/></symbol>
+      <symbol id="icon-link" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 11.5a4 4 0 0 0 5.6 0l3-3a4 4 0 0 0-5.6-5.6l-1.5 1.5"/><path d="M11.5 8.5a4 4 0 0 0-5.6 0l-3 3a4 4 0 1 0 5.6 5.6l1.5-1.5"/></symbol>
+      <symbol id="icon-clipboard" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3h3a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3"/><path d="M8 2.5A1.5 1.5 0 0 1 9.5 1h1A1.5 1.5 0 0 1 12 2.5V4H8V2.5z"/></symbol>
+      <symbol id="icon-x" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="5" x2="15" y2="15"/><line x1="15" y1="5" x2="5" y2="15"/></symbol>
+      <symbol id="icon-download" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v12M5 9l5 5 5-5"/><path d="M3 16v1a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-1"/></symbol>
+      <symbol id="icon-folder" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6z"/></symbol>
+      <symbol id="icon-folder-open" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7.5V6a2 2 0 0 1 2-2h4l2 2h5a2 2 0 0 1 2 2v.5"/><path d="M2 7.5l1.8 8.2A2 2 0 0 0 5.8 17h9.4a2 2 0 0 0 2-1.2L19 7.5H2z"/></symbol>
+      <symbol id="icon-external" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 1h8v8"/><path d="M19 1L9 11"/><path d="M15 15v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"/></symbol>
+      <symbol id="icon-check" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,10 8,14 16,6"/></symbol>
+      <symbol id="icon-trash" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,4 4,17 5,18 15,18 16,17 17,4"/><line x1="1" y1="4" x2="19" y2="4"/><line x1="8" y1="8" x2="8" y2="15"/><line x1="12" y1="8" x2="12" y2="15"/></symbol>
+      <symbol id="icon-moon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17.3 12.3A7.5 7.5 0 1 1 7.7 2.7 8.5 8.5 0 0 0 17.3 12.3z"/></symbol>
+      <symbol id="icon-sun" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3"/><line x1="10" y1="1" x2="10" y2="3"/><line x1="10" y1="17" x2="10" y2="19"/><line x1="1" y1="10" x2="3" y2="10"/><line x1="17" y1="10" x2="19" y2="10"/><line x1="4.3" y1="4.3" x2="5.7" y2="5.7"/><line x1="14.3" y1="14.3" x2="15.7" y2="15.7"/><line x1="4.3" y1="15.7" x2="5.7" y2="14.3"/><line x1="14.3" y1="5.7" x2="15.7" y2="4.3"/></symbol>
+      <symbol id="icon-chevron-down" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6,8 10,12 14,8"/></symbol>
+    </defs>
+  </svg>
+
   <div id="app">
     <div class="titlebar">
-      <button class="titlebar-btn" id="historyBtn" title="Download History">⏬</button>
-      <button class="titlebar-btn" id="settingsBtn" title="Settings">⚙️</button>
-      <button class="titlebar-btn" id="githubBtn" title="GitHub">🌐</button>
+      <button class="titlebar-btn" id="historyBtn" title="Download History">
+        <svg width="18" height="18"><use href="#icon-history"/></svg>
+      </button>
+      <button class="titlebar-btn" id="settingsBtn" title="Settings">
+        <svg width="18" height="18"><use href="#icon-settings"/></svg>
+      </button>
     </div>
 
     <header class="header">
@@ -26,15 +48,24 @@
     <div class="main-content">
       <div class="paste-section" id="pasteSection">
         <div class="paste-input-wrapper" id="pasteWrapper">
-          <span class="paste-icon" id="pasteIcon">🔗</span>
+          <span class="paste-icon" id="pasteIcon">
+            <svg width="18" height="18"><use href="#icon-link"/></svg>
+          </span>
           <input type="text" id="pasteInput" placeholder="Paste video link here..." spellcheck="false" autofocus>
           <div class="paste-actions">
-            <button class="paste-btn clear-btn hidden" id="clearBtn" title="Clear">✕</button>
-            <button class="paste-btn" id="pasteBtn" title="Paste from Clipboard">📋</button>
+            <button class="paste-btn clear-btn hidden" id="clearBtn" title="Clear">
+              <svg width="16" height="16"><use href="#icon-x"/></svg>
+            </button>
+            <button class="paste-btn" id="pasteBtn" title="Paste from Clipboard">
+              <svg width="16" height="16"><use href="#icon-clipboard"/></svg>
+            </button>
           </div>
         </div>
         <div class="paste-hint">
-          <button class="paste-hint-btn" id="clipboardHint">⬇ Paste from Clipboard</button>
+          <button class="paste-hint-btn" id="clipboardHint">
+            <svg width="12" height="12" style="vertical-align:-1px;margin-right:4px"><use href="#icon-download"/></svg>
+            Paste from Clipboard
+          </button>
         </div>
         <div class="error-message hidden" id="errorMsg"></div>
       </div>
@@ -58,11 +89,14 @@
                 <div class="resolution-info" id="resolutionInfo"></div>
               </div>
               <div class="download-btn-wrapper">
-                <button class="download-btn" id="downloadBtn">⬇ Download</button>
+                <button class="download-btn" id="downloadBtn">
+                  <svg width="16" height="16" style="vertical-align:-2px;margin-right:6px"><use href="#icon-download"/></svg>
+                  Download
+                </button>
               </div>
             </div>
             <div class="folder-row">
-              <span>📁</span>
+              <svg width="14" height="14" style="vertical-align:-2px;color:var(--text-muted)"><use href="#icon-folder"/></svg>
               <span class="folder-path" id="folderPath">~/Downloads/ElectDW</span>
             </div>
           </div>
@@ -83,20 +117,28 @@
             <span id="progressETA">ETA: --:--</span>
           </div>
           <div class="progress-actions">
-            <button class="progress-action-btn cancel" id="cancelBtn">✕ Cancel</button>
-            <button class="progress-action-btn open-folder hidden" id="openFolderBtn">📂 Open Folder</button>
+            <button class="progress-action-btn cancel" id="cancelBtn">
+              <svg width="13" height="13" style="vertical-align:-2px;margin-right:4px"><use href="#icon-x"/></svg>
+              Cancel
+            </button>
+            <button class="progress-action-btn open-folder hidden" id="openFolderBtn">
+              <svg width="13" height="13" style="vertical-align:-2px;margin-right:4px"><use href="#icon-folder-open"/></svg>
+              Open Folder
+            </button>
           </div>
         </div>
       </div>
-
-      
+    </div>
 
     <div class="footer">
       <span>ElectDW v1.0.0</span>
       <span class="footer-separator">•</span>
       <span>yt-dlp</span>
       <span class="footer-separator">•</span>
-      <a href="#" id="footerGithub">GitHub</a>
+      <a href="#" id="footerGithub">
+        <svg width="11" height="11" style="vertical-align:-1px;margin-right:3px"><use href="#icon-external"/></svg>
+        GitHub
+      </a>
     </div>
   </div>
 
@@ -105,8 +147,13 @@
   <div class="modal-overlay hidden" id="settingsModal">
     <div class="modal">
       <div class="modal-header">
-        <span class="modal-title">⚙️ Settings</span>
-        <button class="modal-close" id="settingsClose">✕</button>
+        <span class="modal-title">
+          <svg width="18" height="18" style="vertical-align:-3px;margin-right:6px"><use href="#icon-settings"/></svg>
+          Settings
+        </span>
+        <button class="modal-close" id="settingsClose">
+          <svg width="16" height="16"><use href="#icon-x"/></svg>
+        </button>
       </div>
       <div class="modal-body">
         <div class="settings-section">
@@ -180,8 +227,14 @@
             </div>
             <div class="settings-control">
               <div class="theme-toggle" id="settingsTheme">
-                <button class="theme-option active" data-theme="dark">🌙 Dark</button>
-                <button class="theme-option" data-theme="light">☀️ Light</button>
+                <button class="theme-option" data-theme="dark">
+                  <svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#icon-moon"/></svg>
+                  Dark
+                </button>
+                <button class="theme-option" data-theme="light">
+                  <svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#icon-sun"/></svg>
+                  Light
+                </button>
               </div>
             </div>
           </div>
@@ -228,10 +281,17 @@
   <div class="modal-overlay hidden" id="historyModal">
     <div class="modal modal-history">
       <div class="modal-header">
-        <span class="modal-title">⏬ Download History</span>
+        <span class="modal-title">
+          <svg width="18" height="18" style="vertical-align:-3px;margin-right:6px"><use href="#icon-history"/></svg>
+          Download History
+        </span>
         <div class="modal-header-actions">
-          <button class="modal-header-btn" id="historyModalClear" title="Clear All">🗑️</button>
-          <button class="modal-close" id="historyModalClose">✕</button>
+          <button class="modal-header-btn" id="historyModalClear" title="Clear All">
+            <svg width="15" height="15"><use href="#icon-trash"/></svg>
+          </button>
+          <button class="modal-close" id="historyModalClose">
+            <svg width="16" height="16"><use href="#icon-x"/></svg>
+          </button>
         </div>
       </div>
       <div class="modal-body" id="historyModalBody">

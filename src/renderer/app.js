@@ -64,14 +64,9 @@ class ElectDW {
     this.cancelBtn = $('#cancelBtn');
     this.openFolderBtn = $('#openFolderBtn');
 
-    this.historyList = $('#historyList');
-    this.clearHistoryBtn = $('#clearHistoryBtn');
-    this.historySection = $('#historySection');
-
     this.notification = $('#notification');
 
     this.settingsBtn = $('#settingsBtn');
-    this.githubBtn = $('#githubBtn');
     this.historyBtn = $('#historyBtn');
     this.footerGithub = $('#footerGithub');
 
@@ -116,7 +111,6 @@ class ElectDW {
     this.cancelBtn.addEventListener('click', () => this.cancelDownload());
     this.openFolderBtn.addEventListener('click', () => this.openDownloadFolder());
     this.folderPath.addEventListener('click', () => this.pickFolder());
-    this.clearHistoryBtn.addEventListener('click', () => this.clearHistory());
 
     this.historyBtn.addEventListener('click', () => this.openHistoryModal());
     this.historyModalClose.addEventListener('click', () => this.closeHistoryModal());
@@ -184,7 +178,7 @@ class ElectDW {
 
     if (!result.valid) {
       this.pasteWrapper.classList.add('error');
-      this.pasteIcon.textContent = '❌';
+      this.pasteIcon.innerHTML = '<svg width="18" height="18" style="color:var(--status-error)"><use href="#icon-x"/></svg>';
       this.showError('Link not supported. Please paste a video URL from YouTube, Facebook, Instagram, X, TikTok, etc.');
       this.videoSection.classList.add('hidden');
       this.progressSection.classList.add('hidden');
@@ -193,7 +187,8 @@ class ElectDW {
 
     this.pasteWrapper.classList.remove('error');
     this.setState({ platform: result.platform });
-    this.pasteIcon.textContent = this.getPlatformEmoji(result.platform);
+    const initial = this.getPlatformInitial(result.platform);
+    this.pasteIcon.innerHTML = `<span style="font-size:13px;font-weight:700">${initial}</span>`;
     this.pasteIcon.classList.add('detected');
 
     await this.fetchVideoInfo(url);
@@ -202,7 +197,7 @@ class ElectDW {
   clearInput() {
     this.pasteInput.value = '';
     this.pasteWrapper.classList.remove('has-content', 'error');
-    this.pasteIcon.textContent = '🔗';
+    this.pasteIcon.innerHTML = '<svg width="18" height="18"><use href="#icon-link"/></svg>';
     this.pasteIcon.classList.remove('detected');
     this.clearBtn.classList.add('hidden');
     this.errorMsg.classList.add('hidden');
@@ -250,7 +245,7 @@ class ElectDW {
     this.videoThumbnail.alt = data.title;
 
     this.platformBadge.className = `platform-badge ${this.state.platform}`;
-    this.platformBadge.textContent = `${this.getPlatformEmoji(this.state.platform)} ${this.capitalize(this.state.platform)}`;
+    this.platformBadge.textContent = this.capitalize(this.state.platform);
 
     if (data.duration) {
       const mins = Math.floor(data.duration / 60);
@@ -477,54 +472,14 @@ class ElectDW {
     try {
       const history = await window.electronAPI.getHistory();
       this.state.history = history;
-      this.renderHistory();
     } catch (err) {
       console.error('Failed to load history:', err);
     }
   }
 
-  renderHistory() {
-    this.historyList.innerHTML = '';
-
-    if (!this.state.history || this.state.history.length === 0) {
-      this.historyList.innerHTML = '<div class="history-empty">No downloads yet. Paste a link to start!</div>';
-      this.clearHistoryBtn.classList.add('hidden');
-      return;
-    }
-
-    this.clearHistoryBtn.classList.remove('hidden');
-
-    const recent = this.state.history.slice(0, 10);
-    recent.forEach((item) => {
-      const div = document.createElement('div');
-      div.className = 'history-item';
-
-      const statusEmoji = item.status === 'completed' ? '✅' : item.status === 'failed' ? '❌' : '⏹';
-      const date = new Date(item.timestamp);
-      const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-
-      div.innerHTML = `
-        <div class="history-item-info">
-          <div class="history-item-title">${this.escapeHtml(item.title)}</div>
-          <div class="history-item-meta">${this.getPlatformEmoji(item.platform)} ${this.capitalize(item.platform)} • ${item.resolution} • ${dateStr}</div>
-        </div>
-        <div class="history-item-status">${statusEmoji}</div>
-      `;
-
-      div.addEventListener('click', () => {
-        if (item.filePath) {
-          window.electronAPI.openFolder(item.filePath);
-        }
-      });
-
-      this.historyList.appendChild(div);
-    });
-  }
-
   async clearHistory() {
     await window.electronAPI.clearHistory();
     this.state.history = [];
-    this.renderHistory();
     this.renderHistoryModalList();
   }
 
@@ -566,8 +521,14 @@ class ElectDW {
       const div = document.createElement('div');
       div.className = 'history-modal-item';
 
-      const statusEmoji = item.status === 'completed' ? '✅' : item.status === 'failed' ? '❌' : '⏹';
-      const platformEmoji = this.getPlatformEmoji(item.platform);
+      const platform = item.platform || 'unknown';
+      const statusIcon = item.status === 'completed'
+        ? '<svg width="16" height="16" style="color:var(--status-success)" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,10 8,14 16,6"/></svg>'
+        : item.status === 'failed'
+        ? '<svg width="16" height="16" style="color:var(--status-error)" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="15" y2="15"/><line x1="15" y1="5" x2="5" y2="15"/></svg>'
+        : '<svg width="16" height="16" style="color:var(--text-muted)" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="12" height="12" rx="2"/></svg>';
+
+      const platformInitial = this.getPlatformInitial(platform);
       const date = new Date(item.timestamp);
       const dateStr = date.toLocaleDateString('en-US', {
         year: 'numeric', month: 'short', day: 'numeric',
@@ -575,11 +536,11 @@ class ElectDW {
       });
 
       div.innerHTML = `
-        <div class="history-modal-icon">${platformEmoji}</div>
+        <div class="history-modal-icon platform-${platform}">${platformInitial}</div>
         <div class="history-modal-info">
           <div class="history-modal-title">${this.escapeHtml(item.title || 'Unknown')}</div>
           <div class="history-modal-meta">
-            <span class="history-modal-platform" style="color:var(--text-muted)">${this.capitalize(item.platform)}</span>
+            <span>${this.capitalize(platform)}</span>
             <span>•</span>
             <span>${item.resolution || '—'}</span>
             <span>•</span>
@@ -587,7 +548,7 @@ class ElectDW {
           </div>
         </div>
         <div class="history-modal-date">${dateStr}</div>
-        <div class="history-modal-status">${statusEmoji}</div>
+        <div class="history-modal-status">${statusIcon}</div>
       `;
 
       div.addEventListener('click', () => {
@@ -600,12 +561,22 @@ class ElectDW {
     });
   }
 
+  getPlatformInitial(platform) {
+    const map = {
+      youtube: 'YT', facebook: 'FB', instagram: 'IG', twitter: 'TW',
+      tiktok: 'TK', vimeo: 'VM', dailymotion: 'DM', twitch: 'TW',
+      linkedin: 'LI', reddit: 'RD', pinterest: 'PT'
+    };
+    return map[platform] || (platform ? platform.charAt(0).toUpperCase() : '?');
+  }
+
   showError(msg) {
     this.errorMsg.textContent = msg;
     this.errorMsg.classList.remove('hidden');
     setTimeout(() => {
       this.pasteWrapper.classList.remove('error');
-      this.pasteIcon.textContent = '🔗';
+      this.pasteIcon.innerHTML = '<svg width="18" height="18"><use href="#icon-link"/></svg>';
+      this.pasteIcon.classList.remove('detected');
     }, 3000);
   }
 
@@ -689,23 +660,6 @@ class ElectDW {
 
   setState(partial) {
     Object.assign(this.state, partial);
-  }
-
-  getPlatformEmoji(platform) {
-    const map = {
-      youtube: '📺',
-      facebook: '👍',
-      instagram: '📸',
-      twitter: '🐦',
-      tiktok: '🎵',
-      vimeo: '🎥',
-      dailymotion: '▶️',
-      twitch: '🎮',
-      linkedin: '💼',
-      reddit: '👽',
-      pinterest: '📌'
-    };
-    return map[platform] || '🔗';
   }
 
   capitalize(str) {
