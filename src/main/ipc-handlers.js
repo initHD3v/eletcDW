@@ -1,22 +1,43 @@
+// ============================================================
+// ipc-handlers.js — Penangan Komunikasi IPC (Main Process)
+// ============================================================
+// File ini mendaftarkan semua handler IPC yang memungkinkan
+// proses renderer (UI) berkomunikasi dengan proses utama.
+// Setiap handler menangani tugas spesifik seperti deteksi link,
+// pengambilan format video, manajemen download, dan penyimpanan.
+// ============================================================
+
 const { ipcMain, dialog, shell, app, nativeTheme } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const store = require('./store');
 const { detectPlatform, getFormatList, DownloadManager } = require('./downloader');
 
+// Inisialisasi manajer download dan referensi jendela
 const downloadManager = new DownloadManager();
 let currentWindow = null;
 
+// ------------------------------------------------------------
+// setWindow — Menyimpan referensi jendela utama
+// ------------------------------------------------------------
 function setWindow(win) {
   currentWindow = win;
 }
 
+// ------------------------------------------------------------
+// setupIpcHandlers — Mendaftarkan semua handler IPC
+// ------------------------------------------------------------
 function setupIpcHandlers() {
+
+  // ---------- DETEKSI LINK ----------
+  // Memeriksa apakah URL berasal dari platform yang didukung
   ipcMain.handle('detect-link', async (event, url) => {
     const platform = detectPlatform(url);
     return { platform, valid: platform !== null };
   });
 
+  // ---------- AMBIL FORMAT VIDEO ----------
+  // Mendapatkan daftar resolusi dan metadata dari URL video
   ipcMain.handle('fetch-formats', async (event, url) => {
     try {
       const data = await getFormatList(url);
@@ -25,6 +46,7 @@ function setupIpcHandlers() {
       if (data && data.formats) {
         const seenHeights = new Set();
 
+        // Filter format yang valid (punya video, bukan audio saja)
         formats = data.formats
           .filter(f => {
             if (!f || !f.format_id) return false;
@@ -60,6 +82,7 @@ function setupIpcHandlers() {
           })
           .sort((a, b) => b.height - a.height || a.tbr - b.tbr);
 
+        // Hanya ambil resolusi unik (resolusi tertinggi untuk setiap label)
         const uniqueResolutions = new Map();
         for (const f of formats) {
           const key = f.resolution;
@@ -71,6 +94,7 @@ function setupIpcHandlers() {
         formats = Array.from(uniqueResolutions.values());
       }
 
+      // Fallback: jika tidak ada format, buat format default
       if (formats.length === 0) {
         const height = data.height || 0;
         const resLabel = height > 0 ? `${height}p` : 'unknown';
@@ -88,6 +112,7 @@ function setupIpcHandlers() {
         }];
       }
 
+      // Kembalikan metadata video beserta daftar format
       return {
         title: data.title || 'Unknown Title',
         thumbnail: data.thumbnail || '',
@@ -96,30 +121,36 @@ function setupIpcHandlers() {
         formats
       };
     } catch (error) {
-      throw new Error(`Failed to fetch formats: ${error.message}`);
+      throw new Error(`Gagal mengambil format: ${error.message}`);
     }
   });
 
+  // ---------- MULAI DOWNLOAD ----------
+  // Memulai proses download video dengan format yang dipilih
   ipcMain.handle('start-download', async (event, { url, resolution, outputPath }) => {
     const defaultPath = store.get('settings.downloadPath') || path.join(app.getPath('downloads'), 'ElectDW');
 
     const savePath = outputPath || defaultPath;
 
+    // Buat direktori tujuan jika belum ada
     if (!fs.existsSync(savePath)) {
       fs.mkdirSync(savePath, { recursive: true });
     }
 
     const formatSelector = resolution || 'best';
 
+    // Jalankan download melalui DownloadManager
     const downloadId = downloadManager.startDownload(
       url,
       formatSelector,
       savePath,
+      // Callback progres — kirim ke renderer
       (progress) => {
         if (currentWindow && !currentWindow.isDestroyed()) {
           currentWindow.webContents.send('download-progress', progress);
         }
       },
+      // Callback selesai — simpan ke riwayat
       (result) => {
         const history = store.get('history');
         history.unshift({
@@ -131,6 +162,7 @@ function setupIpcHandlers() {
           filePath: savePath,
           status: 'completed'
         });
+        // Batasi riwayat maksimal 100 entri
         if (history.length > 100) history.length = 100;
         store.set('history', history);
 
@@ -138,6 +170,7 @@ function setupIpcHandlers() {
           currentWindow.webContents.send('download-complete', { filePath: savePath });
         }
       },
+      // Callback error — kirim pesan error ke renderer
       (error) => {
         if (currentWindow && !currentWindow.isDestroyed()) {
           currentWindow.webContents.send('download-error', { error: error.message });
@@ -148,10 +181,14 @@ function setupIpcHandlers() {
     return { downloadId };
   });
 
+  // ---------- BATALKAN DOWNLOAD ----------
+  // Membatalkan download yang sedang berjalan berdasarkan ID
   ipcMain.handle('cancel-download', async (event, downloadId) => {
     return downloadManager.cancelDownload(downloadId);
   });
 
+  // ---------- PILIH FOLDER ----------
+  // Membuka dialog pemilihan folder untuk menyimpan download
   ipcMain.handle('select-folder', async () => {
     const result = await dialog.showOpenDialog({
       properties: ['openDirectory', 'createDirectory'],
@@ -165,16 +202,22 @@ function setupIpcHandlers() {
     return { folderPath: null };
   });
 
+  // ---------- BUKA FOLDER ----------
+  // Membuka folder tertentu di file manager sistem
   ipcMain.handle('open-folder', async (event, folderPath) => {
     if (folderPath && fs.existsSync(folderPath)) {
       shell.openPath(folderPath);
     }
   });
 
+  // ---------- RIWAYAT DOWNLOAD ----------
+  // Mengambil daftar riwayat download
   ipcMain.handle('get-history', async () => {
     return store.get('history');
   });
 
+  // ---------- TAMBAH RIWAYAT ----------
+  // Menambahkan entri baru ke riwayat download
   ipcMain.handle('add-history', async (event, entry) => {
     const history = store.get('history');
     history.unshift({
@@ -183,6 +226,7 @@ function setupIpcHandlers() {
       ...entry
     });
 
+    // Batasi riwayat maksimal 100 entri
     if (history.length > 100) {
       history.length = 100;
     }
@@ -191,15 +235,21 @@ function setupIpcHandlers() {
     return history;
   });
 
+  // ---------- HAPUS RIWAYAT ----------
+  // Menghapus seluruh riwayat download
   ipcMain.handle('clear-history', async () => {
     store.set('history', []);
     return [];
   });
 
+  // ---------- PENGATURAN ----------
+  // Mengambil pengaturan yang tersimpan
   ipcMain.handle('get-settings', async () => {
     return store.get('settings');
   });
 
+  // ---------- SIMPAN PENGATURAN ----------
+  // Menyimpan perubahan pengaturan
   ipcMain.handle('save-settings', async (event, settings) => {
     store.set('settings', settings);
     if (settings.theme && currentWindow) {
@@ -208,10 +258,14 @@ function setupIpcHandlers() {
     return true;
   });
 
+  // ---------- BUKA LINK EKSTERNAL ----------
+  // Membuka URL di browser default sistem
   ipcMain.handle('open-external', async (event, url) => {
     await shell.openExternal(url);
   });
 
+  // ---------- VERSI YT-DLP ----------
+  // Mendapatkan versi yt-dlp yang terinstall
   ipcMain.handle('get-ytdlp-version', async () => {
     try {
       const ytDlpPath = require('./downloader').getYtDlpPath

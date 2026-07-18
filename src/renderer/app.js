@@ -1,17 +1,30 @@
+// ============================================================
+// app.js — Logika Antarmuka Pengguna (Renderer Process)
+// ============================================================
+// File ini mengatur seluruh interaksi pengguna di jendela ElectDW.
+// Menggunakan pola class-based dengan state management sederhana
+// untuk mengelola data dan tampilan secara terpusat.
+// ============================================================
+
+// Pintasan untuk memilih elemen DOM
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
+// ============================================================
+// ElectDW — Kelas Utama Aplikasi
+// ============================================================
 class ElectDW {
   constructor() {
+    // State aplikasi — menyimpan semua data yang diperlukan
     this.state = {
-      currentUrl: '',
-      platform: null,
-      videoData: null,
-      selectedFormat: null,
-      downloadPath: '~/Downloads/ElectDW',
-      downloadId: null,
-      history: [],
-      settings: {
+      currentUrl: '',           // URL yang sedang diproses
+      platform: null,           // Platform terdeteksi (youtube, tiktok, dll)
+      videoData: null,          // Metadata video dari yt-dlp
+      selectedFormat: null,     // Format/resolusi yang dipilih
+      downloadPath: '~/Downloads/ElectDW',  // Folder tujuan download
+      downloadId: null,          // ID download aktif
+      history: [],              // Riwayat download
+      settings: {               // Pengaturan aplikasi
         downloadPath: '',
         autoOpenFolder: true,
         defaultResolution: 'best',
@@ -27,14 +40,23 @@ class ElectDW {
     this.init();
   }
 
+  // ----------------------------------------------------------
+  // init — Inisialisasi awal aplikasi
+  // ----------------------------------------------------------
   async init() {
-    this.cacheDom();
-    this.bindEvents();
-    await this.loadSettings();
-    await this.loadHistory();
+    this.cacheDom();         // Simpan referensi elemen DOM
+    this.bindEvents();       // Daftarkan event listener
+    await this.loadSettings(); // Muat pengaturan tersimpan
+    await this.loadHistory();  // Muat riwayat download
   }
 
+  // ----------------------------------------------------------
+  // cacheDom — Menyimpan referensi semua elemen DOM
+  // ----------------------------------------------------------
+  // Mempermudah akses ke elemen tanpa querySelector berulang.
+  // ----------------------------------------------------------
   cacheDom() {
+    // --- Bagian Input URL ---
     this.pasteInput = $('#pasteInput');
     this.pasteWrapper = $('#pasteWrapper');
     this.pasteIcon = $('#pasteIcon');
@@ -44,7 +66,10 @@ class ElectDW {
     this.errorMsg = $('#errorMsg');
     this.pasteSection = $('#pasteSection');
 
+    // --- Bagian Info Video ---
     this.videoSection = $('#videoSection');
+    this.videoCard = $('#videoCard');
+    this.loadingSkeleton = $('#loadingSkeleton');
     this.videoThumbnail = $('#videoThumbnail');
     this.videoTitle = $('#videoTitle');
     this.platformBadge = $('#platformBadge');
@@ -55,6 +80,7 @@ class ElectDW {
     this.downloadBtn = $('#downloadBtn');
     this.folderPath = $('#folderPath');
 
+    // --- Bagian Progres Download ---
     this.progressSection = $('#progressSection');
     this.progressStatus = $('#progressStatus');
     this.progressPercent = $('#progressPercent');
@@ -64,12 +90,15 @@ class ElectDW {
     this.cancelBtn = $('#cancelBtn');
     this.openFolderBtn = $('#openFolderBtn');
 
+    // --- Notifikasi ---
     this.notification = $('#notification');
 
+    // --- Tombol Navigasi ---
     this.settingsBtn = $('#settingsBtn');
     this.historyBtn = $('#historyBtn');
     this.footerGithub = $('#footerGithub');
 
+    // --- Modal Riwayat ---
     this.historyModal = $('#historyModal');
     this.historyModalClose = $('#historyModalClose');
     this.historyModalCloseBtn = $('#historyModalCloseBtn');
@@ -78,6 +107,7 @@ class ElectDW {
     this.historyModalEmpty = $('#historyModalEmpty');
     this.historyCount = $('#historyCount');
 
+    // --- Modal Pengaturan ---
     this.settingsModal = $('#settingsModal');
     this.settingsClose = $('#settingsClose');
     this.settingsCancel = $('#settingsCancel');
@@ -95,11 +125,21 @@ class ElectDW {
     this.aboutReport = $('#aboutReport');
   }
 
+  // ----------------------------------------------------------
+  // bindEvents — Mendaftarkan semua event listener
+  // ----------------------------------------------------------
   bindEvents() {
+    // --- Input URL ---
     this.pasteInput.addEventListener('input', () => this.onInputChange());
     this.pasteInput.addEventListener('paste', () => setTimeout(() => this.onInputChange(), 10));
     this.pasteInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') this.onInputChange();
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        // Validasi format URL terlebih dahulu sebelum diproses
+        if (this.validateUrlFormat(this.pasteInput.value.trim())) {
+          this.onInputChange();
+        }
+      }
       if (e.key === 'Escape') this.clearInput();
       if (e.metaKey && e.key === 'v') setTimeout(() => this.onInputChange(), 50);
     });
@@ -112,6 +152,7 @@ class ElectDW {
     this.openFolderBtn.addEventListener('click', () => this.openDownloadFolder());
     this.folderPath.addEventListener('click', () => this.pickFolder());
 
+    // --- Modal Riwayat ---
     this.historyBtn.addEventListener('click', () => this.openHistoryModal());
     this.historyModalClose.addEventListener('click', () => this.closeHistoryModal());
     this.historyModalCloseBtn.addEventListener('click', () => this.closeHistoryModal());
@@ -120,6 +161,7 @@ class ElectDW {
     });
     this.historyModalClear.addEventListener('click', () => this.clearHistoryFromModal());
 
+    // --- Modal Pengaturan ---
     this.settingsBtn.addEventListener('click', () => this.openSettings());
     this.settingsClose.addEventListener('click', () => this.closeSettings());
     this.settingsCancel.addEventListener('click', () => this.closeSettings());
@@ -128,6 +170,8 @@ class ElectDW {
       if (e.target === this.settingsModal) this.closeSettings();
     });
     this.settingsFolderBtn.addEventListener('click', () => this.pickSettingsFolder());
+
+    // --- Tombol Escape untuk menutup modal ---
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         if (!this.historyModal.classList.contains('hidden')) this.closeHistoryModal();
@@ -135,6 +179,7 @@ class ElectDW {
       }
     });
 
+    // --- Pemilih Tema ---
     this.settingsTheme.addEventListener('click', (e) => {
       const btn = e.target.closest('.theme-option');
       if (!btn) return;
@@ -142,12 +187,12 @@ class ElectDW {
       btn.classList.add('active');
     });
 
+    // --- Link Eksternal ---
     this.aboutGithub.addEventListener('click', (e) => { e.preventDefault(); this.openGithub(); });
     this.aboutReport.addEventListener('click', (e) => { e.preventDefault(); this.openGithub(); });
-
-    this.githubBtn.addEventListener('click', () => this.openGithub());
     this.footerGithub.addEventListener('click', (e) => { e.preventDefault(); this.openGithub(); });
 
+    // --- Pintasan Keyboard: Cmd+D untuk download ---
     document.addEventListener('keydown', (e) => {
       if (e.metaKey && e.key === 'd' && this.state.videoData) {
         e.preventDefault();
@@ -155,14 +200,39 @@ class ElectDW {
       }
     });
 
+    // --- Listener Event dari Proses Utama (IPC) ---
     window.electronAPI.onDownloadProgress((data) => this.onProgress(data));
     window.electronAPI.onDownloadComplete((data) => this.onDownloadComplete(data));
     window.electronAPI.onDownloadError((data) => this.onDownloadError(data));
   }
 
+  // ----------------------------------------------------------
+  // validateUrlFormat — Validasi format URL
+  // ----------------------------------------------------------
+  // Memeriksa apakah URL memiliki format yang benar sebelum
+  // dikirim ke proses utama untuk deteksi platform.
+  // ----------------------------------------------------------
+  validateUrlFormat(url) {
+    if (!url || url.length < 10) return false;
+    try {
+      const parsed = new URL(url);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
+  // ----------------------------------------------------------
+  // onInputChange — Menangani perubahan input URL
+  // ----------------------------------------------------------
+  // Dipicu setiap kali pengguna mengetik atau menempel URL.
+  // Melakukan validasi format, deteksi platform, dan mengambil
+  // informasi video jika URL valid.
+  // ----------------------------------------------------------
   async onInputChange() {
     const url = this.pasteInput.value.trim();
     this.errorMsg.classList.add('hidden');
+    this.pasteWrapper.classList.remove('error');
 
     if (!url) {
       this.clearInput();
@@ -174,26 +244,42 @@ class ElectDW {
     this.pasteWrapper.classList.add('has-content');
     this.clearBtn.classList.remove('hidden');
 
-    const result = await window.electronAPI.detectLink(url);
-
-    if (!result.valid) {
+    // Validasi format URL dasar sebelum lanjut
+    if (!this.validateUrlFormat(url)) {
       this.pasteWrapper.classList.add('error');
       this.pasteIcon.innerHTML = '<svg width="18" height="18" style="color:var(--status-error)"><use href="#icon-x"/></svg>';
-      this.showError('Link not supported. Please paste a video URL from YouTube, Facebook, Instagram, X, TikTok, etc.');
+      this.showError('Format URL tidak valid. Gunakan link yang dimulai dengan http:// atau https://');
       this.videoSection.classList.add('hidden');
       this.progressSection.classList.add('hidden');
       return;
     }
 
+    // Kirim ke proses utama untuk deteksi platform
+    const result = await window.electronAPI.detectLink(url);
+
+    if (!result.valid) {
+      this.pasteWrapper.classList.add('error');
+      this.pasteIcon.innerHTML = '<svg width="18" height="18" style="color:var(--status-error)"><use href="#icon-x"/></svg>';
+      this.showError('Link tidak didukung. Tempel URL video dari YouTube, Facebook, Instagram, X, TikTok, dll.');
+      this.videoSection.classList.add('hidden');
+      this.progressSection.classList.add('hidden');
+      return;
+    }
+
+    // URL valid — tampilkan inisial platform
     this.pasteWrapper.classList.remove('error');
     this.setState({ platform: result.platform });
     const initial = this.getPlatformInitial(result.platform);
     this.pasteIcon.innerHTML = `<span style="font-size:13px;font-weight:700">${initial}</span>`;
     this.pasteIcon.classList.add('detected');
 
+    // Ambil informasi video (judul, thumbnail, format)
     await this.fetchVideoInfo(url);
   }
 
+  // ----------------------------------------------------------
+  // clearInput — Membersihkan input URL dan mereset tampilan
+  // ----------------------------------------------------------
   clearInput() {
     this.pasteInput.value = '';
     this.pasteWrapper.classList.remove('has-content', 'error');
@@ -207,6 +293,9 @@ class ElectDW {
     this.pasteInput.focus();
   }
 
+  // ----------------------------------------------------------
+  // pasteFromClipboard — Menempel URL dari clipboard
+  // ----------------------------------------------------------
   async pasteFromClipboard() {
     try {
       const text = await navigator.clipboard.readText();
@@ -215,30 +304,44 @@ class ElectDW {
         this.onInputChange();
       }
     } catch {
-      this.showNotification('Unable to access clipboard', 'error');
+      this.showNotification('Tidak dapat mengakses clipboard', 'error');
     }
   }
 
+  // ----------------------------------------------------------
+  // fetchVideoInfo — Mengambil metadata video dari yt-dlp
+  // ----------------------------------------------------------
+  // Menampilkan skeleton loading selama proses pengambilan data,
+  // lalu merender informasi video setelah data diterima.
+  // ----------------------------------------------------------
   async fetchVideoInfo(url) {
-    this.videoSection.classList.add('hidden');
+    this.videoCard.classList.add('hidden');
+    this.videoSection.classList.remove('hidden');
+    this.loadingSkeleton.classList.remove('hidden');
     this.downloadBtn.disabled = true;
-    this.downloadBtn.textContent = '⏳ Fetching...';
 
     try {
       const data = await window.electronAPI.fetchFormats(url);
       this.setState({ videoData: data });
       this.renderVideoInfo(data);
-      this.videoSection.classList.remove('hidden');
+      this.loadingSkeleton.classList.add('hidden');
+      this.videoCard.classList.remove('hidden');
       this.downloadBtn.disabled = false;
-      this.downloadBtn.textContent = '⬇ Download';
+      this.downloadBtn.innerHTML = '<svg width="16" height="16" style="vertical-align:-2px;margin-right:6px"><use href="#icon-download"/></svg> Download';
       this.downloadBtn.classList.remove('downloading', 'completed');
     } catch (err) {
-      this.showError(`Failed to fetch video info: ${err.message}`);
+      this.loadingSkeleton.classList.add('hidden');
+      this.videoCard.classList.add('hidden');
+      this.videoSection.classList.add('hidden');
+      this.showError(`Gagal mengambil info video: ${err.message}`);
       this.downloadBtn.disabled = false;
-      this.downloadBtn.textContent = '⬇ Retry';
+      this.downloadBtn.innerHTML = '<svg width="16" height="16" style="vertical-align:-2px;margin-right:6px"><use href="#icon-download"/></svg> Coba Lagi';
     }
   }
 
+  // ----------------------------------------------------------
+  // renderVideoInfo — Menampilkan informasi video di kartu
+  // ----------------------------------------------------------
   renderVideoInfo(data) {
     this.videoTitle.textContent = data.title;
     this.videoThumbnail.src = data.thumbnail || '';
@@ -247,6 +350,7 @@ class ElectDW {
     this.platformBadge.className = `platform-badge ${this.state.platform}`;
     this.platformBadge.textContent = this.capitalize(this.state.platform);
 
+    // Format durasi (detik → menit:detik)
     if (data.duration) {
       const mins = Math.floor(data.duration / 60);
       const secs = data.duration % 60;
@@ -260,9 +364,16 @@ class ElectDW {
     this.renderResolutions(data.formats);
   }
 
+  // ----------------------------------------------------------
+  // renderResolutions — Menampilkan pilihan resolusi
+  // ----------------------------------------------------------
+  // Membuat tombol-tombol resolusi (pill-style). Resolusi
+  // tertinggi otomatis terpilih dan ditandai sebagai "best".
+  // ----------------------------------------------------------
   renderResolutions(formats) {
     this.resolutionPills.innerHTML = '';
 
+    // Urutkan dari resolusi tertinggi ke terendah
     const sorted = [...formats].sort((a, b) => {
       const aRes = parseInt(a.resolution) || 0;
       const bRes = parseInt(b.resolution) || 0;
@@ -270,10 +381,11 @@ class ElectDW {
     });
 
     if (sorted.length === 0) {
-      this.resolutionPills.innerHTML = '<div class="resolution-info">No formats available</div>';
+      this.resolutionPills.innerHTML = '<div class="resolution-info">Tidak ada format tersedia</div>';
       return;
     }
 
+    // Tampilkan maksimal 8 resolusi, sisanya bisa dilihat via "▼ More"
     const displayFormats = sorted.slice(0, 8);
 
     displayFormats.forEach((f, i) => {
@@ -295,6 +407,7 @@ class ElectDW {
       this.resolutionPills.appendChild(pill);
     });
 
+    // Tombol untuk melihat semua resolusi
     if (sorted.length > 8) {
       const more = document.createElement('button');
       more.className = 'resolution-pill';
@@ -304,14 +417,20 @@ class ElectDW {
     }
   }
 
+  // ----------------------------------------------------------
+  // selectFormat — Memilih format/resolusi tertentu
+  // ----------------------------------------------------------
   selectFormat(format) {
     this.state.selectedFormat = format;
     const sizeLabel = format.filesize ? this.formatSize(format.filesize) : 'Unknown size';
     const resLabel = format.resolution;
     this.resolutionInfo.textContent = `${resLabel} • ${(format.ext || 'mp4').toUpperCase()} • ${sizeLabel}`;
-    this.downloadBtn.textContent = `⬇ Download ${resLabel} (${sizeLabel})`;
+    this.downloadBtn.innerHTML = `<svg width="16" height="16" style="vertical-align:-2px;margin-right:6px"><use href="#icon-download"/></svg> Download ${resLabel} (${sizeLabel})`;
   }
 
+  // ----------------------------------------------------------
+  // showAllResolutions — Menampilkan semua resolusi yang tersedia
+  // ----------------------------------------------------------
   showAllResolutions(formats) {
     const container = this.resolutionPills;
     container.innerHTML = '';
@@ -330,13 +449,16 @@ class ElectDW {
     });
   }
 
+  // ----------------------------------------------------------
+  // startDownload — Memulai proses download
+  // ----------------------------------------------------------
   async startDownload() {
     if (!this.state.videoData || !this.state.selectedFormat) return;
 
     this.downloadBtn.disabled = true;
-    this.downloadBtn.textContent = '⏳ Preparing...';
+    this.downloadBtn.innerHTML = '<svg width="16" height="16" style="vertical-align:-2px;margin-right:6px"><use href="#icon-download"/></svg> Menyiapkan...';
     this.progressSection.classList.remove('hidden');
-    this.progressStatus.textContent = 'Downloading...';
+    this.progressStatus.textContent = 'Mengunduh...';
     this.progressPercent.textContent = '0%';
     this.progressFill.style.width = '0%';
     this.progressFill.className = 'progress-bar-fill';
@@ -347,22 +469,29 @@ class ElectDW {
 
     const resolution = this.state.selectedFormat.resolution;
 
-    const result = await window.electronAPI.startDownload({
-      url: this.state.currentUrl,
-      resolution,
-      outputPath: this.state.downloadPath === '~/Downloads/ElectDW'
-        ? null
-        : this.state.downloadPath
-    });
+    try {
+      const result = await window.electronAPI.startDownload({
+        url: this.state.currentUrl,
+        resolution,
+        outputPath: this.state.downloadPath === '~/Downloads/ElectDW'
+          ? null
+          : this.state.downloadPath
+      });
 
-    if (result && result.downloadId) {
-      this.state.downloadId = result.downloadId;
-      this.cancelBtn.dataset.downloadId = result.downloadId;
+      if (result && result.downloadId) {
+        this.state.downloadId = result.downloadId;
+        this.cancelBtn.dataset.downloadId = result.downloadId;
+      }
+    } catch (err) {
+      this.onDownloadError(err);
     }
   }
 
+  // ----------------------------------------------------------
+  // onProgress — Memperbarui tampilan progres download
+  // ----------------------------------------------------------
   onProgress(data) {
-    this.downloadBtn.textContent = `⬇ ${data.percent}%`;
+    this.downloadBtn.innerHTML = `<svg width="16" height="16" style="vertical-align:-2px;margin-right:6px"><use href="#icon-download"/></svg> ${data.percent}%`;
     this.progressPercent.textContent = `${data.percent}%`;
     this.progressFill.style.width = `${data.percent}%`;
 
@@ -372,56 +501,66 @@ class ElectDW {
     if (data.eta && data.eta > 0) {
       const mins = Math.floor(data.eta / 60);
       const secs = Math.floor(data.eta % 60);
-      this.progressETA.textContent = `ETA: ${mins}:${secs.toString().padStart(2, '0')}`;
+      this.progressETA.textContent = `Sisa: ${mins}:${secs.toString().padStart(2, '0')}`;
     } else if (data.eta === 0) {
-      this.progressETA.textContent = 'Finalizing...';
+      this.progressETA.textContent = 'Menyelesaikan...';
     }
   }
 
+  // ----------------------------------------------------------
+  // onDownloadComplete — Menangani selesainya download
+  // ----------------------------------------------------------
   onDownloadComplete(data) {
     this.progressFill.classList.add('complete');
     this.progressFill.style.width = '100%';
     this.progressPercent.textContent = '100%';
-    this.progressStatus.textContent = '✅ Download Complete!';
+    this.progressStatus.innerHTML = '<svg width="14" height="14" style="vertical-align:-2px;color:var(--status-success)"><use href="#icon-check"/></svg> Download Selesai!';
     this.progressSpeed.textContent = '';
     this.progressETA.textContent = '';
 
     this.cancelBtn.classList.add('hidden');
     this.openFolderBtn.classList.remove('hidden');
 
-    this.downloadBtn.textContent = '✅ Downloaded';
+    this.downloadBtn.innerHTML = '<svg width="16" height="16" style="vertical-align:-2px;margin-right:6px"><use href="#icon-check"/></svg> Selesai';
     this.downloadBtn.classList.add('completed');
     this.downloadBtn.disabled = false;
 
-    this.showNotification('Download completed!', 'success');
+    this.showNotification('Download selesai!', 'success');
     this.state.downloadId = null;
     this.loadHistory();
   }
 
+  // ----------------------------------------------------------
+  // onDownloadError — Menangani error download
+  // ----------------------------------------------------------
   onDownloadError(data) {
-    const errMsg = typeof data === 'string' ? data : (data.error || 'Unknown error');
+    const errMsg = typeof data === 'string' ? data : (data.error || 'Kesalahan tidak diketahui');
 
-    this.progressStatus.textContent = '❌ Download Failed';
+    this.progressStatus.innerHTML = '<svg width="14" height="14" style="vertical-align:-2px;color:var(--status-error)"><use href="#icon-x"/></svg> Download Gagal';
     this.progressFill.classList.add('complete');
     this.progressFill.style.width = '0%';
 
-    this.downloadBtn.textContent = '🔄 Retry';
+    this.downloadBtn.innerHTML = '<svg width="16" height="16" style="vertical-align:-2px;margin-right:6px"><use href="#icon-download"/></svg> Coba Lagi';
     this.downloadBtn.disabled = false;
     this.cancelBtn.classList.add('hidden');
 
-    this.showNotification(`Download failed: ${errMsg}`, 'error');
+    this.showNotification(`Download gagal: ${errMsg}`, 'error');
     this.state.downloadId = null;
     this.loadHistory();
   }
 
+  // ----------------------------------------------------------
+  // cancelDownload — Membatalkan download yang sedang berjalan
+  // ----------------------------------------------------------
   async cancelDownload() {
     if (this.state.downloadId) {
       await window.electronAPI.cancelDownload(this.state.downloadId);
-      this.progressStatus.textContent = '⏹ Cancelled';
-      this.downloadBtn.textContent = '⬇ Download';
+      this.progressStatus.innerHTML = '<svg width="14" height="14" style="vertical-align:-2px;color:var(--text-muted)"><use href="#icon-x"/></svg> Dibatalkan';
+      this.downloadBtn.innerHTML = '<svg width="16" height="16" style="vertical-align:-2px;margin-right:6px"><use href="#icon-download"/></svg> Download';
       this.downloadBtn.disabled = false;
       this.cancelBtn.classList.add('hidden');
 
+      // Simpan ke riwayat sebagai dibatalkan
       const entry = {
         url: this.state.currentUrl,
         title: this.state.videoData?.title || 'Unknown',
@@ -436,6 +575,9 @@ class ElectDW {
     }
   }
 
+  // ----------------------------------------------------------
+  // openDownloadFolder — Membuka folder hasil download
+  // ----------------------------------------------------------
   async openDownloadFolder() {
     const path = this.state.downloadPath === '~/Downloads/ElectDW'
       ? null
@@ -445,6 +587,9 @@ class ElectDW {
     }
   }
 
+  // ----------------------------------------------------------
+  // pickFolder — Memilih folder download kustom
+  // ----------------------------------------------------------
   async pickFolder() {
     const result = await window.electronAPI.selectFolder();
     if (result.folderPath) {
@@ -453,6 +598,9 @@ class ElectDW {
     }
   }
 
+  // ----------------------------------------------------------
+  // loadSettings — Memuat pengaturan dari penyimpanan
+  // ----------------------------------------------------------
   async loadSettings() {
     try {
       const settings = await window.electronAPI.getSettings();
@@ -464,25 +612,34 @@ class ElectDW {
         }
       }
     } catch (err) {
-      console.error('Failed to load settings:', err);
+      console.error('Gagal memuat pengaturan:', err);
     }
   }
 
+  // ----------------------------------------------------------
+  // loadHistory — Memuat riwayat download
+  // ----------------------------------------------------------
   async loadHistory() {
     try {
       const history = await window.electronAPI.getHistory();
       this.state.history = history;
     } catch (err) {
-      console.error('Failed to load history:', err);
+      console.error('Gagal memuat riwayat:', err);
     }
   }
 
+  // ----------------------------------------------------------
+  // clearHistory — Menghapus semua riwayat download
+  // ----------------------------------------------------------
   async clearHistory() {
     await window.electronAPI.clearHistory();
     this.state.history = [];
     this.renderHistoryModalList();
   }
 
+  // ----------------------------------------------------------
+  // openHistoryModal — Membuka modal riwayat download
+  // ----------------------------------------------------------
   async openHistoryModal() {
     await this.loadHistory();
     this.renderHistoryModalList();
@@ -493,14 +650,19 @@ class ElectDW {
     this.historyModal.classList.add('hidden');
   }
 
+  // ----------------------------------------------------------
+  // clearHistoryFromModal — Menghapus riwayat dari modal
+  // ----------------------------------------------------------
   async clearHistoryFromModal() {
     await window.electronAPI.clearHistory();
     this.state.history = [];
-    this.renderHistory();
     this.renderHistoryModalList();
-    this.showNotification('History cleared', 'success');
+    this.showNotification('Riwayat dihapus', 'success');
   }
 
+  // ----------------------------------------------------------
+  // renderHistoryModalList — Merender daftar riwayat di modal
+  // ----------------------------------------------------------
   renderHistoryModalList() {
     const list = this.historyModalList;
     const empty = this.historyModalEmpty;
@@ -521,6 +683,7 @@ class ElectDW {
       const div = document.createElement('div');
       div.className = 'history-modal-item';
 
+      // Ikon status berdasarkan status download
       const platform = item.platform || 'unknown';
       const statusIcon = item.status === 'completed'
         ? '<svg width="16" height="16" style="color:var(--status-success)" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,10 8,14 16,6"/></svg>'
@@ -551,6 +714,7 @@ class ElectDW {
         <div class="history-modal-status">${statusIcon}</div>
       `;
 
+      // Klik item untuk membuka folder download
       div.addEventListener('click', () => {
         if (item.filePath) {
           window.electronAPI.openFolder(item.filePath);
@@ -561,6 +725,9 @@ class ElectDW {
     });
   }
 
+  // ----------------------------------------------------------
+  // getPlatformInitial — Mendapatkan inisial platform
+  // ----------------------------------------------------------
   getPlatformInitial(platform) {
     const map = {
       youtube: 'YT', facebook: 'FB', instagram: 'IG', twitter: 'TW',
@@ -570,9 +737,13 @@ class ElectDW {
     return map[platform] || (platform ? platform.charAt(0).toUpperCase() : '?');
   }
 
+  // ----------------------------------------------------------
+  // showError — Menampilkan pesan error
+  // ----------------------------------------------------------
   showError(msg) {
     this.errorMsg.textContent = msg;
     this.errorMsg.classList.remove('hidden');
+    // Hapus efek error setelah 3 detik
     setTimeout(() => {
       this.pasteWrapper.classList.remove('error');
       this.pasteIcon.innerHTML = '<svg width="18" height="18"><use href="#icon-link"/></svg>';
@@ -580,6 +751,9 @@ class ElectDW {
     }, 3000);
   }
 
+  // ----------------------------------------------------------
+  // showNotification — Menampilkan notifikasi sementara
+  // ----------------------------------------------------------
   showNotification(msg, type = 'info') {
     this.notification.textContent = msg;
     this.notification.className = `notification ${type}`;
@@ -587,6 +761,9 @@ class ElectDW {
     setTimeout(() => this.notification.classList.add('hidden'), 4000);
   }
 
+  // ----------------------------------------------------------
+  // openSettings — Membuka modal pengaturan
+  // ----------------------------------------------------------
   async openSettings() {
     const s = this.state.settings;
     this.settingsFolderPath.textContent = s.downloadPath || '~/Downloads/ElectDW';
@@ -595,6 +772,7 @@ class ElectDW {
     this.settingsNotify.checked = s.notifyOnComplete;
     this.settingsProxy.value = s.proxyUrl || '';
 
+    // Set tema aktif
     $$('.theme-option').forEach(b => {
       b.classList.toggle('active', b.dataset.theme === s.theme);
     });
@@ -604,6 +782,7 @@ class ElectDW {
 
     this.settingsModal.classList.remove('hidden');
 
+    // Ambil versi yt-dlp untuk ditampilkan
     try {
       const ytver = await window.electronAPI.getYtdlpVersion();
       this.aboutYtdlp.textContent = ytver;
@@ -620,6 +799,9 @@ class ElectDW {
     this.settingsModal.classList.add('hidden');
   }
 
+  // ----------------------------------------------------------
+  // saveSettings — Menyimpan perubahan pengaturan
+  // ----------------------------------------------------------
   async saveSettings() {
     const themeBtn = this.settingsTheme.querySelector('.theme-option.active');
     const newSettings = {
@@ -640,12 +822,15 @@ class ElectDW {
     try {
       await window.electronAPI.saveSettings(newSettings);
       this.closeSettings();
-      this.showNotification('Settings saved', 'success');
+      this.showNotification('Pengaturan disimpan', 'success');
     } catch (err) {
-      this.showNotification('Failed to save settings', 'error');
+      this.showNotification('Gagal menyimpan pengaturan', 'error');
     }
   }
 
+  // ----------------------------------------------------------
+  // pickSettingsFolder — Memilih folder dari modal pengaturan
+  // ----------------------------------------------------------
   async pickSettingsFolder() {
     const result = await window.electronAPI.selectFolder();
     if (result && result.folderPath) {
@@ -654,18 +839,28 @@ class ElectDW {
     }
   }
 
+  // ----------------------------------------------------------
+  // openGithub — Membuka repositori GitHub di browser
+  // ----------------------------------------------------------
   openGithub() {
     window.electronAPI.openExternal('https://github.com/initHD3v/eletcDW');
   }
 
+  // ----------------------------------------------------------
+  // Utility Functions
+  // ----------------------------------------------------------
+
+  // Memperbarui state secara parsial
   setState(partial) {
     Object.assign(this.state, partial);
   }
 
+  // Mengubah huruf pertama menjadi kapital
   capitalize(str) {
     return str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
   }
 
+  // Memformat ukuran file (bytes → B/KB/MB/GB/TB)
   formatSize(bytes) {
     if (!bytes || bytes === 0) return 'Unknown';
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -678,6 +873,7 @@ class ElectDW {
     return `${size.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
   }
 
+  // Mengamankan string dari XSS (escape HTML entities)
   escapeHtml(str) {
     if (!str) return '';
     const div = document.createElement('div');
@@ -686,6 +882,9 @@ class ElectDW {
   }
 }
 
+// ----------------------------------------------------------
+// Inisialisasi aplikasi saat DOM siap
+// ----------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
   new ElectDW();
 });

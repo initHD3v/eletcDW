@@ -1,17 +1,28 @@
+// ============================================================
+// store.js — Penyimpanan Data Persisten (Main Process)
+// ============================================================
+// Menggunakan library electron-store untuk menyimpan pengaturan
+// dan riwayat download secara permanen di disk.
+// Data disimpan dalam format JSON di direktori data aplikasi.
+// ============================================================
+
 const Store = require('electron-store');
 
+// ------------------------------------------------------------
+// Schema — Mendefinisikan struktur dan default value data
+// ------------------------------------------------------------
 const schema = {
   settings: {
     type: 'object',
     properties: {
-      downloadPath: { type: 'string', default: '' },
-      autoOpenFolder: { type: 'boolean', default: true },
-      defaultResolution: { type: 'string', default: 'best' },
-      theme: { type: 'string', enum: ['dark', 'light'], default: 'dark' },
-      concurrentDownloads: { type: 'number', default: 1 },
-      notifyOnComplete: { type: 'boolean', default: true },
-      proxyUrl: { type: 'string', default: '' },
-      filenameTemplate: { type: 'string', default: '%(title)s.%(ext)s' }
+      downloadPath: { type: 'string', default: '' },           // Path folder download kustom
+      autoOpenFolder: { type: 'boolean', default: true },       // Buka folder otomatis setelah selesai
+      defaultResolution: { type: 'string', default: 'best' },   // Resolusi default
+      theme: { type: 'string', enum: ['dark', 'light'], default: 'dark' },  // Tema aplikasi
+      concurrentDownloads: { type: 'number', default: 1 },      // Jumlah download bersamaan
+      notifyOnComplete: { type: 'boolean', default: true },      // Notifikasi saat selesai
+      proxyUrl: { type: 'string', default: '' },                 // Proxy untuk download
+      filenameTemplate: { type: 'string', default: '%(title)s.%(ext)s' }  // Template nama file
     },
     default: {}
   },
@@ -35,6 +46,7 @@ const schema = {
   }
 };
 
+// Buat instance store dengan schema yang sudah didefinisikan
 const store = new Store({ schema });
 
 module.exports = store;

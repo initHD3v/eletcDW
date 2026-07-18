@@ -1,9 +1,23 @@
+// ============================================================
+// downloader.js — Mesin Download Video (Main Process)
+// ============================================================
+// File ini menangani seluruh proses download menggunakan yt-dlp.
+// Termasuk deteksi platform, pengambilan daftar format video,
+// parsing progres download, dan manajemen download aktif.
+// ============================================================
+
 const { spawn, execFile } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
 const isDev = process.env.NODE_ENV === 'development';
 
+// ------------------------------------------------------------
+// getYtDlpPath — Mendapatkan path binary yt-dlp
+// ------------------------------------------------------------
+// Di dev: cari di folder resources lokal, fallback ke system yt-dlp
+// Di produksi: gunakan extraResource yang dibundel
+// ------------------------------------------------------------
 function getYtDlpPath() {
   if (isDev) {
     const localPath = path.join(__dirname, '..', 'resources', 'yt-dlp');
@@ -15,6 +29,12 @@ function getYtDlpPath() {
   return 'yt-dlp';
 }
 
+// ------------------------------------------------------------
+// PLATFORM_PATTERNS — Daftar pola URL untuk setiap platform
+// ------------------------------------------------------------
+// Digunakan untuk mendeteksi asal URL video dan menampilkan
+// badge platform yang sesuai di antarmuka pengguna.
+// ------------------------------------------------------------
 const PLATFORM_PATTERNS = [
   { platform: 'youtube', patterns: ['youtube.com', 'youtu.be', 'm.youtube.com'] },
   { platform: 'facebook', patterns: ['facebook.com', 'fb.watch', 'fb.com'] },
@@ -29,6 +49,11 @@ const PLATFORM_PATTERNS = [
   { platform: 'pinterest', patterns: ['pinterest.com', 'pin.it'] },
 ];
 
+// ------------------------------------------------------------
+// detectPlatform — Mendeteksi platform dari URL
+// ------------------------------------------------------------
+// Mengembalikan nama platform (string) atau null jika tidak dikenal.
+// ------------------------------------------------------------
 function detectPlatform(url) {
   try {
     const urlObj = new URL(url);
@@ -46,37 +71,66 @@ function detectPlatform(url) {
   }
 }
 
+// ------------------------------------------------------------
+// getFormatList — Mengambil daftar format video dari yt-dlp
+// ------------------------------------------------------------
+// Menggunakan spawn untuk streaming output JSON (menghindari
+// batas maxBuffer dari execFile). Menambahkan --playlist-items 1
+// untuk mencegah overflow JSON pada URL playlist.
+// ------------------------------------------------------------
 function getFormatList(url) {
   return new Promise((resolve, reject) => {
     const ytDlpPath = getYtDlpPath();
     const args = [
       '--dump-json',
-      '--no-download',
       '--no-warnings',
+      '--playlist-items', '1',
       url
     ];
 
-    execFile(ytDlpPath, args, { timeout: 60000, maxBuffer: 1024 * 1024 * 4 }, (error, stdout, stderr) => {
-      if (error) {
-        let errMsg = stderr || error.message;
+    const proc = spawn(ytDlpPath, args, {
+      timeout: 60000,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout.on('data', (data) => { stdout += data.toString(); });
+    proc.stderr.on('data', (data) => { stderr += data.toString(); });
+
+    proc.on('close', (code) => {
+      if (code !== 0) {
+        let errMsg = stderr || `Proses keluar dengan kode ${code}`;
         if (errMsg.includes('Video unavailable')) {
-          return reject(new Error('Video unavailable or private'));
+          return reject(new Error('Video tidak tersedia atau bersifat pribadi'));
         }
         if (errMsg.includes('HTTP Error')) {
-          return reject(new Error('Network error. Check your connection.'));
+          return reject(new Error('Kesalahan jaringan. Periksa koneksi Anda.'));
         }
         return reject(new Error(errMsg.split('\n').filter(l => l.includes('ERROR'))[0] || errMsg));
       }
       try {
-        const data = JSON.parse(stdout);
+        const lines = stdout.trim().split('\n');
+        const data = JSON.parse(lines[0]);
         resolve(data);
       } catch (e) {
-        reject(new Error('Failed to parse video metadata'));
+        reject(new Error('Gagal memparse metadata video'));
       }
+    });
+
+    proc.on('error', (err) => {
+      reject(new Error(err.message));
     });
   });
 }
 
+// ------------------------------------------------------------
+// parseFormatId — Mengubah label resolusi ke format selector yt-dlp
+// ------------------------------------------------------------
+// Contoh: "1080p" → "bestvideo[height<=1080][ext=mp4]+bestaudio..."
+// "best" → format terbaik yang tersedia
+// ------------------------------------------------------------
 function parseFormatId(formatString) {
   if (!formatString || formatString === 'best') {
     return 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best';
@@ -91,11 +145,29 @@ function parseFormatId(formatString) {
   return formatString;
 }
 
+// ------------------------------------------------------------
+// DownloadManager — Manajer Download Aktif
+// ------------------------------------------------------------
+// Mengelola proses download yang sedang berjalan, termasuk
+// spawn proses yt-dlp, parsing progres, dan pembatalan.
+// ------------------------------------------------------------
 class DownloadManager {
   constructor() {
+    // Map untuk menyimpan proses download aktif (key: downloadId)
     this.activeDownloads = new Map();
   }
 
+  // ----------------------------------------------------------
+  // startDownload — Memulai proses download baru
+  // ----------------------------------------------------------
+  // Parameter:
+  //   - url: URL video yang akan didownload
+  //   - formatId: label resolusi (contoh: "1080p", "best")
+  //   - outputPath: direktori tujuan penyimpanan
+  //   - onProgress: callback untuk update progres
+  //   - onComplete: callback saat download selesai
+  //   - onError: callback saat terjadi error
+  // ----------------------------------------------------------
   startDownload(url, formatId, outputPath, onProgress, onComplete, onError) {
     const ytDlpPath = getYtDlpPath();
     const downloadId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -105,27 +177,34 @@ class DownloadManager {
     const args = [
       '--newline',
       '--no-warnings',
+      // Template progres: [downloaded_bytes/total_bytes/speed/eta]
       '--progress-template',
       'download:[%(progress.downloaded_bytes)s/%(progress.total_bytes)s/%(progress.speed)s/%(progress.eta)s]',
       '-f', parseFormatId(formatId),
-      '--merge-output-format', 'mp4',
+      '--merge-output-format', 'mp4',  // Gabung video+audio ke MP4
       '-o', outputTemplate,
-      '--no-playlist',
+      '--no-playlist',                  // Hanya video tunggal, bukan playlist
       url
     ];
 
     const proc = spawn(ytDlpPath, args, {
       stdio: ['ignore', 'pipe', 'pipe'],
-      timeout: 0
+      timeout: 0  // Tidak ada batas waktu untuk download besar
     });
 
+    // Simpan proses ke daftar download aktif
     this.activeDownloads.set(downloadId, proc);
 
     let buffer = '';
     let hasError = false;
+    let stderrBuf = '';
 
+    // ---------- PARSING PROGRES ----------
+    // Baca output stdout baris per baris, parse template progres
+    // Format: [downloaded/total/speed/eta]
     proc.stdout.on('data', (data) => {
-      buffer += data.toString();
+      const chunk = data.toString();
+      buffer += chunk;
       const lines = buffer.split('\n');
       buffer = lines.pop() || '';
 
@@ -151,7 +230,9 @@ class DownloadManager {
       }
     });
 
+    // Tangkap error dari stderr
     proc.stderr.on('data', (data) => {
+      stderrBuf += data.toString();
       if (hasError) return;
       const msg = data.toString();
       if (msg.includes('ERROR:')) {
@@ -160,12 +241,16 @@ class DownloadManager {
       }
     });
 
+    // ---------- SELESAI ----------
     proc.on('close', (code) => {
       this.activeDownloads.delete(downloadId);
       if (code === 0) {
         onComplete({ filePath: outputPath });
       } else if (code === null) {
-        onError(new Error('Download cancelled'));
+        onError(new Error('Download dibatalkan'));
+      } else {
+        const stderr = stderrBuf.replace(/^.*ERROR:\s*/gm, '').trim();
+        onError(new Error(stderr || `yt-dlp keluar dengan kode ${code}`));
       }
     });
 
@@ -177,10 +262,14 @@ class DownloadManager {
     return downloadId;
   }
 
+  // ----------------------------------------------------------
+  // cancelDownload — Membatalkan download berdasarkan ID
+  // ----------------------------------------------------------
   cancelDownload(downloadId) {
     const proc = this.activeDownloads.get(downloadId);
     if (proc) {
       proc.kill('SIGTERM');
+      // Force kill jika tidak berhenti dalam 3 detik
       setTimeout(() => {
         try { proc.kill('SIGKILL'); } catch {}
       }, 3000);
@@ -191,6 +280,7 @@ class DownloadManager {
   }
 }
 
+// Ekspor semua fungsi dan kelas untuk digunakan di file lain
 module.exports = {
   detectPlatform,
   parseFormatId,
