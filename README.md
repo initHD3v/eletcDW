@@ -36,7 +36,7 @@ Paste a video link from YouTube, Facebook, Instagram, X/Twitter, TikTok, and 13+
 
 ```bash
 # Clone the repository
-git clone https://github.com/initialh/eletcDW.git
+git clone https://github.com/initHD3v/eletcDW.git
 cd eletcDW
 
 # Install dependencies

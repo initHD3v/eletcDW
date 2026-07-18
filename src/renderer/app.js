@@ -499,7 +499,7 @@ class ElectDW {
   }
 
   openGithub() {
-    window.electronAPI.openExternal('https://github.com/initialh/eletcDW');
+    window.electronAPI.openExternal('https://github.com/initHD3v/eletcDW');
   }
 
   setState(partial) {
