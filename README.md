@@ -1,104 +1,113 @@
-# ElectDW ⚡
+<div align="center">
 
-**Desktop Video Downloader for Social Media** — built with Electron for Apple Silicon Mac.
+# ⚡ ElectDW
 
-Paste a video link from YouTube, Facebook, Instagram, X/Twitter, TikTok, and 13+ platforms. ElectDW auto-detects the source, shows available resolutions, and downloads the video — all in a clean, modern interface.
+**Downloader Video Desktop untuk Media Sosial**  
+Dibangun dengan Electron, khusus Apple Silicon Mac.
 
-## Features
+[![Release](https://img.shields.io/github/v/release/initHD3v/eletcDW?style=flat-square)](https://github.com/initHD3v/eletcDW/releases)
+[![License](https://img.shields.io/github/license/initHD3v/eletcDW?style=flat-square)](LICENSE)
 
-- 🔗 **Smart Link Detection** — paste any video URL, app auto-detects the platform
-- 📺 **13+ Platforms Supported** — YouTube, Facebook, Instagram, X/Twitter, TikTok, Vimeo, Dailymotion, Twitch, LinkedIn, Reddit, Pinterest, and more
-- 🎯 **Resolution Selector** — choose from available qualities (default: highest)
-- ⬇ **Fast Downloads** — powered by yt-dlp engine with real-time progress
-- 📂 **Custom Save Location** — pick where to save your videos
-- ⏬ **Download History** — track all your downloads
-- 🎨 **Clean Modern UI** — dark theme with glassmorphism, electric accents, smooth animations
-- 💻 **Apple Silicon Native** — optimized for M1/M2/M3/M4 Macs
+</div>
 
-## Screenshots
+---
 
-| Main Window | Settings | History |
+## Sekilas
+
+Tempel tautan video dari YouTube, Facebook, Instagram, X/Twitter, TikTok, atau platform lainnya. ElectDW otomatis mendeteksi sumbernya, menampilkan resolusi yang tersedia, dan mengunduh videonya.
+
+Ditenagai oleh **yt-dlp** di belakang layar. Tampilannya gelap dengan aksen elektrik—cocok buat yang suka hal-hal teknis.
+
+## Tangkapan Layar
+
+| Beranda | Sedang Mengunduh | Riwayat |
 |---|---|---|
-| ![Main](sc/Screenshot%202026-07-21%20at%2015.10.30.png) | ![Settings](sc/Screenshot%202026-07-21%20at%2015.10.37.png) | ![History](sc/Screenshot%202026-07-21%20at%2015.10.47.png) |
+| ![Beranda](sc/Screenshot%202026-07-21%20at%2015.10.30.png) | ![Proses unduh](sc/Screenshot%202026-07-21%20at%2015.10.37.png) | ![Riwayat](sc/Screenshot%202026-07-21%20at%2015.10.47.png) |
+
+## Fitur
+
+- **Deteksi tautan otomatis** — tempel URL, aplikasi langsung tahu platformnya
+- **13+ platform** — YouTube, Facebook, Instagram, X/Twitter, TikTok, Vimeo, Dailymotion, Twitch, LinkedIn, Reddit, Pinterest, dan lainnya
+- **Pilih resolusi** — mau 4K atau 720p, terserah kamu (default: yang terbaik)
+- **Unduh cepat** — progres real-time, kecepatan, dan perkiraan sisa waktu
+- **Folder kustom** — tentukan sendiri tempat penyimpanan
+- **Riwayat unduhan** — semua yang pernah diunduh tercatat
+- **Tampilan modern** — tema gelap, glassmorphism, animasi halus
+- **Khusus Apple Silicon** — dioptimalkan untuk M1, M2, M3, M4
 
 ## Tech Stack
 
-| Layer | Technology |
+| Lapisan | Teknologi |
 |---|---|
-| Desktop Shell | Electron 33 |
-| Frontend | HTML + CSS (Vanilla) |
-| Download Engine | yt-dlp |
-| Persistent Storage | electron-store |
+| Desktop | Electron 33 |
+| Frontend | HTML + CSS murni (vanilla) |
+| Mesin unduh | yt-dlp |
+| Penyimpanan | electron-store |
 
-## Getting Started
+## Persiapan
 
-### Prerequisites
+### Prasyarat
 
-- macOS (Apple Silicon)
-- Node.js 20+
-- Python 3 (required by yt-dlp)
+- Mac dengan chip Apple Silicon
+- Node.js 20 atau lebih baru
+- Python 3 (dibutuhkan yt-dlp)
 
-### Installation
+### Instalasi
 
 ```bash
-# Clone the repository
 git clone https://github.com/initHD3v/eletcDW.git
 cd eletcDW
 
-# Install dependencies
 npm install
-
-# Download yt-dlp binary
 npm run fetch-ytdlp
-
-# Run in development mode
 npm run dev
 ```
 
-### Build for Production
+### Build untuk Produksi
 
 ```bash
-# Build macOS ARM64 DMG
 npm run build:mac
 ```
 
-## Usage
+Hasilnya ada di folder `release/`, file `.dmg` siap pakai.
 
-1. **Launch ElectDW**
-2. **Copy a video URL** from a supported platform
-3. **Paste** into the input field (or click "Paste from Clipboard")
-4. **Select quality** — the highest available is auto-selected
-5. **Choose save folder** (optional, defaults to ~/Downloads/ElectDW)
-6. **Click Download** — watch the progress bar
-7. **Open folder** when complete
+## Cara Pakai
 
-## Keyboard Shortcuts
+1. Buka ElectDW
+2. Salin URL video dari platform mana pun
+3. Tempel ke kolom input (atau klik tombol clipboard)
+4. Pilih resolusi—yang tertinggi otomatis terpilih
+5. Atur folder tujuan (opsional, default `~/Downloads/ElectDW`)
+6. Klik **Download**
+7. Selesai—buka foldernya langsung dari aplikasi
 
-| Shortcut | Action |
+## Pintasan Keyboard
+
+| Tombol | Fungsi |
 |---|---|
-| `Cmd+V` | Paste from clipboard |
-| `Cmd+D` | Start download |
-| `Esc` | Clear input |
+| `Cmd+V` | Tempel dari clipboard |
+| `Cmd+D` | Mulai unduh |
+| `Esc` | Bersihkan input |
 
-## Project Structure
+## Struktur Proyek
 
 ```
 eletcDW/
 ├── package.json
 ├── electron-builder.yml
 ├── src/
-│   ├── main/               # Electron Main Process
-│   │   ├── index.js        # Window creation, app lifecycle
-│   │   ├── ipc-handlers.js # IPC communication channels
-│   │   ├── downloader.js   # yt-dlp wrapper & platform detection
-│   │   └── store.js        # Persistent settings & history
-│   ├── renderer/            # UI Layer
-│   │   ├── index.html      # Main window HTML
-│   │   ├── styles.css      # Full design system with animations
-│   │   ├── app.js          # Renderer logic & state management
-│   │   └── preload.js      # Context bridge for IPC
+│   ├── main/               # Proses utama Electron
+│   │   ├── index.js        # entry point
+│   │   ├── ipc-handlers.js # komunikasi main ↔ renderer
+│   │   ├── downloader.js   # wrapper yt-dlp
+│   │   └── store.js        # penyimpanan lokal
+│   ├── renderer/            # UI
+│   │   ├── index.html
+│   │   ├── styles.css
+│   │   ├── app.js
+│   │   └── preload.js      # jembatan IPC yang aman
 │   └── resources/
-│       └── yt-dlp          # yt-dlp binary (arm64)
+│       └── yt-dlp          # binary (arm64)
 ├── build/
 │   └── entitlements.mac.plist
 ├── Docs/
@@ -106,6 +115,6 @@ eletcDW/
 └── README.md
 ```
 
-## License
+## Lisensi
 
 MIT
