@@ -20,9 +20,9 @@ Ditenagai oleh **yt-dlp** di belakang layar. Tampilannya gelap dengan aksen elek
 
 ## Tangkapan Layar
 
-| Beranda | Sedang Mengunduh | Riwayat |
+| Beranda | Pengaturan | Riwayat |
 |---|---|---|
-| ![Beranda](sc/Screenshot%202026-07-21%20at%2015.10.30.png) | ![Proses unduh](sc/Screenshot%202026-07-21%20at%2015.10.37.png) | ![Riwayat](sc/Screenshot%202026-07-21%20at%2015.10.47.png) |
+| ![Beranda](sc/Screenshot%202026-07-21%20at%2015.10.30.png) | ![Pengaturan](sc/Screenshot%202026-07-21%20at%2015.10.37.png) | ![Riwayat](sc/Screenshot%202026-07-21%20at%2015.10.47.png) |
 
 ## Fitur
 
