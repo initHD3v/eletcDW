@@ -15,6 +15,12 @@ Paste a video link from YouTube, Facebook, Instagram, X/Twitter, TikTok, and 13+
 - 🎨 **Clean Modern UI** — dark theme with glassmorphism, electric accents, smooth animations
 - 💻 **Apple Silicon Native** — optimized for M1/M2/M3/M4 Macs
 
+## Screenshots
+
+| Main Window | Download in Progress | History |
+|---|---|---|
+| ![Main](sc/Screenshot%202026-07-21%20at%2015.10.30.png) | ![Download](sc/Screenshot%202026-07-21%20at%2015.10.37.png) | ![History](sc/Screenshot%202026-07-21%20at%2015.10.47.png) |
+
 ## Tech Stack
 
 | Layer | Technology |
